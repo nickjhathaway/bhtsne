@@ -10,6 +10,8 @@ This software package contains a Barnes-Hut implementation of the t-SNE algorith
 git clone https://github.com/umass-bib/bhtsne.git --recursive
 cd bhtsne 
 git checkout develop
+#download setup tools submodule to download armadillo
+git submodule init
 git submodule update
 ```
 
