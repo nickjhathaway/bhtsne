@@ -7,18 +7,16 @@ This software package contains a Barnes-Hut implementation of the t-SNE algorith
 
 ## Installing developmental version
 ```bash
-git clone https://github.com/umass-bib/bhtsne.git --recursive
+git clone https://github.com/umass-bib/bhtsne.git
 cd bhtsne 
 git checkout develop
-#download setup tools submodule to download armadillo
-git submodule init
-git submodule update
 ```
 
 ## Installing armadillo
 
+Download and put makefile flags in makefile-common.mk
+
 ```bash
 cd bhtsne 
-cppSetupTools/setup.py --libs armadillo:7.500.2
-
+./setup.py --libs armadillo:7.500.2 --outMakefile makefile-common.mk
 ```
