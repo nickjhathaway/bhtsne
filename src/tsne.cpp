@@ -46,12 +46,22 @@ using namespace std;
 
 // Perform t-SNE
 arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
-  arma::mat x{X};
+  arma::mat coeff;
+  arma::mat score;
+  arma::vec latent;
+  arma::vec tsquared;
+
+  arma::princomp(coeff, score, latent, tsquared, X);
+
+  arma::mat x = X * coeff;
+  
   arma::mat ret(x.n_rows, params.no_dims);
+  
   run(x.memptr(), x.n_rows, x.n_cols, y.memptr(),
       params.no_dims_, params.perplexity_, params.theta_, params.rand_seed_,
       params.skip_random_init_, params.max_iter_, params.stop_lying_iter_,
       params.mom_switch_iter_);
+  
   return ret;
 }
 
@@ -745,6 +755,7 @@ void TSNE::save_data(double* data, int* landmarks, double* costs, int n, int d) 
   printf("Wrote the %i x %i data matrix successfully!\n", n, d);
 }
 
+/*
 
 // Function that runs the Barnes-Hut implementation of t-SNE
 int main() {
@@ -788,3 +799,4 @@ int main() {
   }
   delete(tsne);
 }
+*/
