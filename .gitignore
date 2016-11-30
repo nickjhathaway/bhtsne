@@ -3,3 +3,4 @@ __pycache__/
 *.py[cod]
 bh_tsne
 
+lib
