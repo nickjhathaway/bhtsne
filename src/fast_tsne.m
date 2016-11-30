@@ -105,14 +105,14 @@ end
 function write_data(X, no_dims, theta, perplexity, max_iter)
     [n, d] = size(X);
     h = fopen('data.dat', 'wb');
-	fwrite(h, n, 'integer*4');
-	fwrite(h, d, 'integer*4');
+    fwrite(h, n, 'integer*4');
+    fwrite(h, d, 'integer*4');
     fwrite(h, theta, 'double');
     fwrite(h, perplexity, 'double');
-	fwrite(h, no_dims, 'integer*4');
+    fwrite(h, no_dims, 'integer*4');
     fwrite(h, max_iter, 'integer*4');
     fwrite(h, X', 'double');
-	fclose(h);
+    fclose(h);
 end
 
 
