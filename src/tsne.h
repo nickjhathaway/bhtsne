@@ -1,3 +1,4 @@
+#pragma once
 /*
  *
  * Copyright (c) 2014, Laurens van der Maaten (Delft University of Technology)
@@ -30,34 +31,48 @@
  *
  */
 
+#define ARMA_64BIT_WORD
+#include <armadillo>
 
-#ifndef TSNE_H
-#define TSNE_H
+struct TSNEArgs{
 
+  double theata_ = 0.5;        // gradient accuracy
+  double perplexity_ = 30;     // perplexity
+  double no_dims_ = 2;         // output dimensionality
+  int32_t max_iter_ = 1000;    // maximum number of iterations
+  int32_t stop_lying_iter_=250;
+  int32_t mom_switch_iter_=250;
+  int32_t rand_seed_ = -1;
+
+};
 
 static inline double sign(double x) { return (x == .0 ? .0 : (x < .0 ? -1.0 : 1.0)); }
 
-
-class TSNE
-{
+class TSNE {
 public:
-    void run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed,
-             bool skip_random_init, int max_iter=1000, int stop_lying_iter=250, int mom_switch_iter=250);
-    bool load_data(double** data, int* n, int* d, int* no_dims, double* theta, double* perplexity, int* rand_seed, int* max_iter);
+  arma::mat run(const arma::mat& X, const TSNEArgs& params);
+  
+  void run(double* X, int N, int D, double* Y, int no_dims, double perplexity,
+	     double theta, int rand_seed,
+             bool skip_random_init, int max_iter=1000, int stop_lying_iter=250,
+	     int mom_switch_iter=250);
+    
+    bool load_data(double** data, int* n, int* d, int* no_dims, double* theta,
+		   double* perplexity, int* rand_seed, int* max_iter);
     void save_data(double* data, int* landmarks, double* costs, int n, int d);
-    void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P, double** val_P, int N); // should be static!
-
+    void symmetrizeMatrix(unsigned int** row_P, unsigned int** col_P,
+			  double** val_P, int N); // should be static!
 
 private:
-    void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P, double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
+    void computeGradient(double* P, unsigned int* inp_row_P, unsigned int* inp_col_P,
+			 double* inp_val_P, double* Y, int N, int D, double* dC, double theta);
     void computeExactGradient(double* P, double* Y, int N, int D, double* dC);
     double evaluateError(double* P, double* Y, int N, int D);
-    double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y, int N, int D, double theta);
+    double evaluateError(unsigned int* row_P, unsigned int* col_P, double* val_P, double* Y,
+			 int N, int D, double theta);
     void zeroMean(double* X, int N, int D);
     void computeGaussianPerplexity(double* X, int N, int D, double* P, double perplexity);
     void computeGaussianPerplexity(double* X, int N, int D, unsigned int** _row_P, unsigned int** _col_P, double** _val_P, double perplexity, int K);
     void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
     double randn();
 };
-
-#endif
