@@ -7,3 +7,4 @@ lib
 compfile.mk
 bin
 build
+makefile-common.mk

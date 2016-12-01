@@ -111,13 +111,18 @@ void TSNE::run(double* X, int N, int D, double* Y,
   for(int i = 0; i < N * D; i++) X[i] /= max_X;
 
   // Compute input similarities for exact t-SNE
-  double* P; unsigned int* row_P; unsigned int* col_P; double* val_P;
+  double* P = nullptr;
+  unsigned int* row_P = nullptr;
+  unsigned int* col_P = nullptr;
+  double* val_P = nullptr;
   if(exact) {
 
     // Compute similarities
     printf("Exact?");
     P = (double*) malloc(N * N * sizeof(double));
-    if(P == NULL) { printf("Memory allocation failed!\n"); exit(1); }
+    if(P == NULL) {
+      printf("Memory allocation failed!\n"); exit(1);
+    }
     computeGaussianPerplexity(X, N, D, P, perplexity);
 
     // Symmetrize input similarities
