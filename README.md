@@ -18,5 +18,8 @@ Download and put makefile flags in makefile-common.mk
 
 ```bash
 cd bhtsne 
-./setup.py --libs armadillo:7.500.2 --outMakefile makefile-common.mk
+CC=gcc CXX=g++ ./configure.py
+./setup.py --compfile compfile.mk --outMakefile makefile-common.mk
 ```
+
+

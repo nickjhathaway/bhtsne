@@ -34,7 +34,58 @@ class LibDirMaster():
 def joinNameVer(libNameVerTup):
     return os.path.join(libNameVerTup.name, libNameVerTup.version, libNameVerTup.name)
 
-
+class CPPLibPackageVersionR():
+    def __init__(self, name, url, version, dirMaster):
+        self.nameVer_ = LibNameVer(name, version)
+        build_dir = os.path.join(dirMaster.ext_build, name, version)
+        fn = os.path.basename(url)
+        fn_noex = fn.replace(".tar.gz", "").replace(".tar.bz2", "").replace(".git", "")
+        build_sub_dir = os.path.join(dirMaster.ext_build, name, version, fn_noex)
+        local_dir = os.path.join(dirMaster.install_dir, name, version, name)
+        self.bPaths_ = BuildPaths(url, build_dir, build_sub_dir, local_dir)
+        self.rInstallLoc_ = ""
+        self.rExecutable_ = ""
+        self.rHome_ = ""
+        self.depends_ = []
+        
+        
+    def setExecutableLoc(self, localPath):
+        self.rInstallLoc_ = os.path.join(os.path.abspath(localPath), joinNameVer(self.nameVer_))
+        verSplit = self.nameVer_.version.split(".")
+        verNameStr = verSplit[0] + verSplit[1] + verSplit[2]
+        verNameInt = int(verNameStr)
+        #print verSplit
+        #print verNameStr
+        #print verNameInt
+        #sys.exit(1)
+        
+        if Utils.isMac() and verNameInt < 330:
+            self.rExecutable_ = os.path.join(self.rInstallLoc_, "R.framework/Resources/bin/R")
+        else:
+            self.rExecutable_ = os.path.join(self.rInstallLoc_, "bin/R")
+        self.rHome_ = str(Utils.runAndCapture(self.rExecutable_ + " RHOME")).strip()
+    
+    def getIncludeFlags(self, localPath):
+        self.setExecutableLoc(localPath)
+        ret = "-DSTRICT_R_HEADERS"
+        ret = ret + " " + Utils.runAndCapture(self.rExecutable_ + " CMD config --cppflags")
+        ret = ret + " " + Utils.runAndCapture("echo 'Rcpp:::CxxFlags()' | " + self.rExecutable_ + " --vanilla --slave")
+        ret = ret + " " + Utils.runAndCapture("echo 'RInside:::CxxFlags()' | " + self.rExecutable_ + " --vanilla --slave")
+        return ' '.join(ret.split())
+        
+    def getLdFlags(self, localPath):
+        self.setExecutableLoc(localPath)
+        ret = ""
+        ret = ret + Utils.runAndCapture(self.rExecutable_ + " CMD config --ldflags")
+        ret = ret + " " + Utils.runAndCapture(self.rExecutable_ + " CMD config BLAS_LIBS")
+        ret = ret + " " + Utils.runAndCapture(self.rExecutable_ + " CMD config LAPACK_LIBS")
+        ret = ret + " " + "-Wl,-rpath," + self.rHome_ + "/lib"
+        ret = ret + " " + Utils.runAndCapture("echo 'Rcpp:::LdFlags()' | " + self.rExecutable_ + " --vanilla --slave")
+        ret = ret + " " + Utils.runAndCapture("echo 'RInside:::LdFlags()' | " + self.rExecutable_ + " --vanilla --slave")
+        return ' '.join(ret.split())
+    
+    def getDownloadUrl(self):
+        return self.bPaths_.url
 
 
 class CPPLibPackageVersion():
@@ -177,13 +228,264 @@ class Packages():
         self.args = args
         self.packages_ = {} #dictionary to hold path infos
         self.packages_["armadillo"] = self.__armadillo()
-
+        self.packages_["cppitertools"] = self.__cppitertools()
+        '''
+        self.packages_["zi_lib"] = self.__zi_lib()
+        self.packages_["pstreams"] = self.__pstreams()
+        
+        self.packages_["cppprogutils"] = self.__cppprogutils()
+        self.packages_["boost"] = self.__boost()
+        self.packages_["r"] = self.__r()
+        self.packages_["cppcms"] = self.__cppcms()
+        self.packages_["bamtools"] = self.__bamtools()
+        self.packages_["jsoncpp"] = self.__jsoncpp()
+        self.packages_["bibseq"] = self.__bibseq()
+        self.packages_["bibcpp"] = self.__bibcpp()
+        self.packages_["seekdeep"] = self.__SeekDeep()
+        self.packages_["bibseqdev"] = self.__bibseqDev()
+        self.packages_["seekdeepdev"] = self.__SeekDeepDev()
+        self.packages_["seqserver"] = self.__seqserver()
+        self.packages_["njhrinside"] = self.__njhRInside()
+        self.packages_["twobit"] = self.__twobit()
+        self.packages_["sharedmutex"] = self.__sharedMutex()
+        self.packages_["dlib"] = self.__dlib()
+        self.packages_["libsvm"] = self.__libsvm()
+        self.packages_["mongoc"] = self.__mongoc()
+        self.packages_["mongocxx"] = self.__mongocxx()
+        self.packages_["catch"] = self.__catch()
+        self.packages_["mathgl"] = self.__mathgl()
+        self.packages_["magic"] = self.__magic()
+        self.packages_["zlib"] = self.__zlib()
+        self.packages_["muscle"] = self.__muscle()
+        self.packages_["bowtie2"] = self.__bowtie2()
+        self.packages_["flash"] = self.__flash()
+        self.packages_["lastz"] = self.__lastz()
+        self.packages_["samtools"] = self.__samtools()
+        self.packages_["bcftools"] = self.__bcftools()
+        self.packages_["hts"] = self.__hts()
+        self.packages_["restbed"] = self.__restbed()
+        self.packages_["mipwrangler"] = self.__MIPWrangler()
+        self.packages_["mlpack"] = self.__mlpack()
+        self.packages_["liblinear"] = self.__liblinear()
+        '''
 
     def package(self, name):
         '''get package info if it exists'''
         if name in self.packages_:
             return self.packages_[name]
         raise Exception(name + " not found in paths")
+
+    def __zi_lib(self):
+        name = "zi_lib"
+        url = 'https://github.com/weng-lab/zi_lib.git'
+        buildCmd = ""
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git-headeronly", "master")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addHeaderOnlyVersion(url, ref)
+                pack.versions_[ref].includePath_ = os.path.join(name, ref, name)
+                if not Utils.isMac():
+                    pack.versions_[ref].additionalLdFlags_ = ["-lrt"]
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __pstreams(self):
+        name = "pstreams"
+        url = 'https://github.com/nickjhathaway/pstreams.git'
+        buildCmd = ""
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git-headeronly", "RELEASE_0_8_1")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addHeaderOnlyVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+
+    def __bamtools(self):
+        url = 'https://github.com/nickjhathaway/bamtools.git'
+        name = "bamtools"
+        buildCmd = "mkdir -p build && cd build && CC={CC} CXX={CXX} cmake -DCMAKE_INSTALL_PREFIX:PATH={local_dir} .. && make -j {num_cores} install"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v2.4.0")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+                pack.versions_[ref].libPath_ = os.path.join(pack.versions_[ref].libPath_,name)
+                pack.versions_[ref].includePath_ = os.path.join(pack.versions_[ref].includePath_,name)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __jsoncpp(self):
+        url = "https://github.com/open-source-parsers/jsoncpp.git"
+        name = "jsoncpp"
+        buildCmd = "mkdir -p build && cd build && CC={CC} CXX={CXX} cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_EXE_LINKER_FLAGS=-fPIC -DCMAKE_INSTALL_PREFIX:PATH={local_dir} ..  && make -j {num_cores} install"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "1.7.1")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __mongoc(self):
+        url = "https://github.com/mongodb/mongo-c-driver.git"
+        name = "mongoc"
+        if Utils.isMac():
+            buildCmd = "sed -i.bak s/git:/http:/g .gitmodules && CC={CC} CXX={CXX}  PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig:$PKG_CONFIG_PATH ./autogen.sh --enable-ssl --enable-sasl --prefix={local_dir}&& make -j {num_cores}  && make install"
+        else:
+            buildCmd = "sed -i.bak s/git:/http:/g .gitmodules && CC={CC} CXX={CXX} ./autogen.sh --enable-ssl --enable-sasl --prefix={local_dir} && make -j {num_cores}  && make install"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "1.3.3")
+        pack.addVersion(url, "1.3.3")
+        pack.versions_["1.3.3"].additionalIncludePaths_.append(pack.versions_["1.3.3"].includePath_ + "/libmongoc-1.0")
+        pack.versions_["1.3.3"].includePath_ = pack.versions_["1.3.3"].includePath_ + "/libbson-1.0"
+        pack.versions_["1.3.3"].altLibName_ = "ssl" #a trick to control order of -l flags for libs
+        pack.versions_["1.3.3"].additionalLdFlags_ = ["-lcrypto","-lmongoc-1.0", "-lbson-1.0"]  
+        if not Utils.isMac():
+            pack.versions_["1.3.3"].additionalLdFlags_.append("-lrt") 
+        pack.addVersion(url, "1.3.4")
+        pack.versions_["1.3.4"].additionalIncludePaths_.append(pack.versions_["1.3.4"].includePath_ + "/libmongoc-1.0")
+        pack.versions_["1.3.4"].includePath_ = pack.versions_["1.3.4"].includePath_ + "/libbson-1.0"
+        pack.versions_["1.3.4"].altLibName_ = "ssl" #a trick to control order of -l flags for libs
+        pack.versions_["1.3.4"].additionalLdFlags_ = ["-lcrypto","-lmongoc-1.0", "-lbson-1.0"]  
+        if not Utils.isMac():
+            pack.versions_["1.3.4"].additionalLdFlags_.append("-lrt")
+        pack.addVersion(url, "1.4.1")
+        pack.versions_["1.4.1"].additionalIncludePaths_.append(pack.versions_["1.4.1"].includePath_ + "/libmongoc-1.0")
+        pack.versions_["1.4.1"].includePath_ = pack.versions_["1.4.1"].includePath_ + "/libbson-1.0"
+        pack.versions_["1.4.1"].altLibName_ = "ssl" #a trick to control order of -l flags for libs
+        pack.versions_["1.4.1"].additionalLdFlags_ = ["-lcrypto","-lmongoc-1.0", "-lbson-1.0"]  
+        if not Utils.isMac():
+            pack.versions_["1.4.1"].additionalLdFlags_.append("-lrt") 
+        return pack
+    
+    def __mongocxx(self):
+        url = "https://github.com/mongodb/mongo-cxx-driver.git"
+        name = "mongocxx"
+        buildCmd = "cd build && PKG_CONFIG_PATH={external}/local/mongoc/{mongoc_ver}/mongoc/lib/pkgconfig/:PKG_CONFIG_PATH CC={CC} CXX={CXX} cmake -DCMAKE_BUILD_TYPE=Release -DLIBBSON_DIR={external}/local/mongoc/{mongoc_ver}/mongoc/ -DLIBMONGOC_DIR={external}/local/mongoc/{mongoc_ver}/mongoc/ -DCMAKE_INSTALL_PREFIX={local_dir} .. && make -j {num_cores} && make install"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "r3.0.1")
+        pack.addVersion(url, "r3.0.0", [LibNameVer("mongoc", "1.3.3")])
+        pack.versions_["r3.0.0"].additionalIncludePaths_.append(pack.versions_["r3.0.0"].includePath_ + "/mongocxx/v_noabi")
+        pack.versions_["r3.0.0"].includePath_ = pack.versions_["r3.0.0"].includePath_ + "/bsoncxx/v_noabi"
+        pack.versions_["r3.0.0"].additionalLdFlags_ = ["-lbsoncxx"] 
+        pack.addVersion(url, "r3.0.1", [LibNameVer("mongoc", "1.3.4")])
+        pack.versions_["r3.0.1"].additionalIncludePaths_.append(pack.versions_["r3.0.1"].includePath_ + "/mongocxx/v_noabi")
+        pack.versions_["r3.0.1"].includePath_ = pack.versions_["r3.0.1"].includePath_ + "/bsoncxx/v_noabi"
+        pack.versions_["r3.0.1"].additionalLdFlags_ = ["-lbsoncxx"]
+        pack.addVersion(url, "r3.0.2", [LibNameVer("mongoc", "1.4.1")])
+        pack.versions_["r3.0.2"].additionalIncludePaths_.append(pack.versions_["r3.0.2"].includePath_ + "/mongocxx/v_noabi")
+        pack.versions_["r3.0.2"].includePath_ = pack.versions_["r3.0.2"].includePath_ + "/bsoncxx/v_noabi"
+        pack.versions_["r3.0.2"].additionalLdFlags_ = ["-lbsoncxx"]
+        return pack
+
+    def __cppitertools(self):
+        url = 'https://github.com/ryanhaining/cppitertools.git'
+        name = "cppitertools"
+        buildCmd = ""
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git-headeronly", "v0.1")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addHeaderOnlyVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+
+    def __catch(self):
+        url = 'https://github.com/philsquared/Catch.git'
+        name = "catch"
+        buildCmd = ""
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git-headeronly", "v1.3.3")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addHeaderOnlyVersion(url, ref)
+                pack.versions_[ref].includePath_ = os.path.join(joinNameVer(pack.versions_[ref].nameVer_), "single_include")
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+
+    def __r(self):
+        name = "R"
+        rHomeLoc = "bin/R RHOME"
+        if Utils.isMac():
+            rHomeLoc = "R.framework/Resources/bin/R RHOME"
+        #&& echo 'install.packages(c(\"gridExtra\", \"ape\", \"ggplot2\", \"seqinr\",\"Rcpp\", \"RInside\",\"devtools\"),
+        buildCmd = """./configure --prefix={local_dir} --enable-R-shlib --with-x=no CC={CC} CXX={CXX} OBJC={CC}
+                && make -j {num_cores}
+                && make install
+                && echo 'install.packages(c(\"gridExtra\", \"ape\", \"ggplot2\", \"seqinr\",\"Rcpp\", \"RInside\"),
+                repos=\"http://cran.us.r-project.org\", Ncpus = {num_cores}, lib =.libPaths()[length(.libPaths()  )])' | $({local_dir}/""" + rHomeLoc + """)/bin/R --slave --vanilla
+                """
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "3.3.0")
+        pack.versions_["3.3.0"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.3.0.tar.gz", "3.3.0", self.dirMaster_)
+        pack.versions_["3.2.4"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.2.4.tar.gz", "3.2.4", self.dirMaster_)
+        pack.versions_["3.2.3"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.2.3.tar.gz", "3.2.3", self.dirMaster_)
+        pack.versions_["3.2.2"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.2.2.tar.gz", "3.2.2", self.dirMaster_)
+        pack.versions_["3.2.1"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.2.1.tar.gz", "3.2.1", self.dirMaster_)
+        pack.versions_["3.2.0"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.2.0.tar.gz", "3.2.0", self.dirMaster_)
+        pack.versions_["3.1.3"] = CPPLibPackageVersionR("R", "http://baileylab.umassmed.edu/sourceCodes/R/R-3.1.3.tar.gz", "3.1.3", self.dirMaster_)
+        return pack
 
     def __armadillo(self):
         name = "armadillo"
@@ -198,9 +500,540 @@ class Packages():
         pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/armadillo/armadillo-6.100.0.tar.gz", "6.100.0")
         pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/armadillo/armadillo-5.600.2.tar.gz", "5.600.2")
         return pack
+    
+    def __muscle(self):
+        name = "muscle"
+        buildCmd = "cd src && CC={CC} CXX={CXX} make -j {num_cores} && mkdir -p {local_dir}/bin && cp muscle {local_dir}/bin/"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "3.8.31")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/muscle/muscle3.8.31_src.tar.gz", "3.8.31")
+        return pack
+        
+    def __bowtie2(self):
+        name = "bowtie2"
+        buildCmd = "CC={CC} CXX={CXX} make -j {num_cores} && mkdir -p {local_dir}/bin && cp -r bowtie2* {local_dir}/bin/"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "2.2.6")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/bowtie2/bowtie2-2.2.6.tar.gz", "2.2.6")
+        return pack
+        
+    def __flash(self):
+        name = "flash"
+        buildCmd = "CC={CC} CXX={CXX} make -j {num_cores} && mkdir -p {local_dir}/bin && cp flash {local_dir}/bin/"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.2.11")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/flash/FLASH-1.2.11.tar.gz", "1.2.11")
+        return pack
+    
+    def __lastz(self):
+        name = "lastz"
+        buildCmd = "sed -i.bak 's/-Werror//g' src/Makefile && CC={CC} CXX={CXX} make -j {num_cores} && mkdir -p {local_dir}/bin && cp src/lastz src/lastz_D {local_dir}/bin/"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.03.73")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/lastz/lastz-1.03.73.tar.gz", "1.03.73")
+        return pack
+        
+    def __samtools(self):
+        name = "samtools"
+        buildCmd = "CC={CC} CXX={CXX} ./configure --prefix={local_dir} && make -j {num_cores} && make install "
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.3.1")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/samtools/samtools-1.3.1.tar.bz2", "1.3.1")
+        return pack
+    
+    def __bcftools(self):
+        name = "bcftools"
+        buildCmd = "CC={CC} CXX={CXX} && make prefix={local_dir} -j {num_cores} && make prefix={local_dir} install "
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.3.1")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/bcftools/bcftools-1.3.1.tar.bz2", "1.3.1")
+        return pack
+    
+    def __hts(self):
+        name = "hts"
+        url = "https://github.com/samtools/htslib.git"
+        buildCmd = "CC={CC} CXX={CXX} && autoheader && autoconf && ./configure --prefix={local_dir} && make -j {num_cores} && make install -j {num_cores}"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "1.3.1")
 
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+                pack.versions_[ref].additionalLdFlags_ = ["-lz -lm -lpthread"]
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __restbed(self):
+        name = "restbed"
+        url = "https://github.com/Corvusoft/restbed.git"
+        if not Utils.isMac():
+            buildCmd = """git submodule init && git submodule update && sed -i 's/CMAKE_CXX_FLAGS}} -stdlib=libc++/CMAKE_CXX_FLAGS}}/g' cmake/build_configuration.cmake && mkdir build && cd build && CC={CC} CXX={CXX} cmake -DBUILD_TESTS=YES -DBUILD_EXAMPLES=YES -DBUILD_SSL=NO -DBUILD_SHARED=YES -DCMAKE_INSTALL_PREFIX={local_dir} .. && make install -j {num_cores}"""
+        else:
+            buildCmd = """git submodule init && git submodule update && mkdir build && cd build && CC={CC} CXX={CXX} cmake -DBUILD_TESTS=YES -DBUILD_EXAMPLES=YES -DBUILD_SSL=NO -DBUILD_SHARED=YES -DCMAKE_INSTALL_PREFIX={local_dir} .. && make install -j {num_cores}"""
+
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "4.0")
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+                pack.versions_[ref].libPath_ = pack.versions_[ref].libPath_ + "rary"
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        #pack.addVersion("https://github.com/Corvusoft/restbed.git", "4.0")
+        #pack.versions_["4.0"].additionalLdFlags_ = ["-lz -lm -lpthread"]
+        return pack
+    
     
 
+    '''
+    def __mlpack(self):
+        url = "http://www.mlpack.org/files/mlpack-1.0.8.tar.gz"
+        armadillo_dir = Utils.shellquote(i.local_dir).replace("mlpack", "armadillo")
+        boost_dir = Utils.shellquote(i.local_dir).replace("mlpack", "boost")
+        cmd = """
+        mkdir -p build
+        && cd build
+        && CC={CC} CXX={CXX} cmake -D DEBUG=OFF -D PROFILE=OFF
+         -D ARMADILLO_LIBRARY={armadillo_dir}/lib/libarmadillo.so.4.0.2
+         -D ARMADILLO_INCLUDE_DIR={armadillo_dir}/include/
+         -D CMAKE_INSTALL_PREFIX:PATH={local_dir} ..
+         -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_INCLUDEDIR={boost}/include/ -DBOOST_LIBRARYDIR={boost}/lib/
+        && make -j {num_cores} install
+        """.format(local_dir=Utils.shellquote(i.local_dir),
+           armadillo_dir=armadillo_dir,
+           num_cores=self.num_cores(),
+           boost=boost_dir, CC=self.CC, CXX=self.CXX)
+        cmd = " ".join(cmd.split('\n'))
+        return self.__package_dirs(url, "mlpack")
+    
+    def __liblinear(self):
+        name = "liblinear"
+        url = "http://www.csie.ntu.edu.tw/~cjlin/liblinear/oldfiles/liblinear-1.94.tar.gz"
+        cmd = """
+            perl -p -i -e 's/if\(check_probability_model/if\(1 || check_probability_model/' linear.cpp &&
+            make &&
+            mkdir -p {local_dir} &&
+            cp predict train {local_dir} &&
+            make lib &&
+            cp linear.h liblinear.so.1 README {local_dir} &&
+            ln -s {local_dir}/liblinear.so.1 {local_dir}/liblinear.so
+            """.format(local_dir=Utils.shellquote(i.local_dir))
+        cmd = " ".join(cmd.split())
+        return self.__package_dirs(url, "liblinear")
+    '''
+    
+    def __magic(self):
+        name = "magic"
+        buildCmd = """./configure CC={CC} CXX={CXX} --disable-dependency-tracking  --disable-silent-rules
+            --prefix={local_dir}
+            --enable-fsect-man5  --enable-static 
+            && make -j {num_cores} 
+            && make -j {num_cores} install"""
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "5.25")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/libmagic/file-5.25.tar.gz", "5.25")
+        return pack
+    
+    def __zlib(self):
+        name = "zlib"
+        buildCmd = """CC={CC} CXX={CXX}  ./configure 
+            --prefix={local_dir}
+            && make -j {num_cores} 
+            && make -j {num_cores} install"""
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.2.8")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/zlib/zlib-1.2.8.tar.gz", "1.2.8")
+        pack.versions_["1.2.8"].altLibName_ = "z"
+        return pack
+    
+    def __mathgl(self):
+        name = "mathgl"
+        buildCmd = ""
+        if "clang" in self.args.CC:
+            buildCmd = """mkdir -p build && cd build && CC={CC} CXX={CXX} cmake -DCMAKE_INSTALL_PREFIX:PATH={local_dir} -Denable-pthread=ON -Denable-openmp=OFF .. 
+            && make -j {num_cores} install"""
+        else:
+            buildCmd = """mkdir -p build && cd build && CC={CC} CXX={CXX} cmake -DCMAKE_INSTALL_PREFIX:PATH={local_dir}  .. 
+            && make -j {num_cores} install"""
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "2.2.1")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/mathgl/mathgl-2.2.1.tar.gz", "2.2.1")
+        pack.versions_["2.2.1"].includePath_ = os.path.join(pack.versions_["2.2.1"].includePath_,"mgl2")
+        pack.versions_["2.2.1"].altLibName_ = "mgl"
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/mathgl/mathgl-2.3.4.tar.gz", "2.3.4")
+        pack.versions_["2.3.4"].includePath_ = os.path.join(pack.versions_["2.3.4"].includePath_,"mgl2")
+        pack.versions_["2.3.4"].altLibName_ = "mgl"
+        return pack
+    
+    def __cppcms(self):
+        name = "cppcms"
+        buildCmd = "mkdir -p build && cd build && CC={CC} CXX={CXX} cmake -DCMAKE_INSTALL_PREFIX:PATH={local_dir} .. && make -j {num_cores} install"
+        if(sys.platform == "darwin"):
+            buildCmd += " && install_name_tool -change libbooster.0.dylib {local_dir}/lib/libbooster.0.dylib {local_dir}/lib/libcppcms.1.dylib"
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1.0.5")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/cppcms/cppcms-1.0.5.tar.bz2", "1.0.5")
+        pack.versions_["1.0.5"].additionalLdFlags_ = ["-lbooster"]
+        return pack
+
+    def __dlib(self):
+        name = "dlib"
+        buildCmd = "mkdir {local_dir} && cp -a * {local_dir}/"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "18.7")
+        pack.addVersion("http://freefr.dl.sourceforge.net/project/dclib/dlib/v18.7/dlib-18.7.tar.bz2", "18.7")
+        pack.versions_["18.7"].includePath_ = joinNameVer(pack.versions_["18.7"].nameVer_)
+        pack.versions_["18.7"].libPath_ = ""
+        return pack
+    
+    def __libsvm(self):
+        name = "libsvm"
+        buildCmd = "make && make lib && mkdir -p {local_dir} && cp -a * {local_dir}"
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "3.18")
+        pack.addVersion("http://www.csie.ntu.edu.tw/~cjlin/libsvm/oldfiles/libsvm-3.18.tar.gz", "3.18")
+        pack.versions_["3.18"].includePath_ = joinNameVer(pack.versions_["3.18"].nameVer_)
+        pack.versions_["3.18"].libPath_ = ""
+        return pack
+    
+    def __cppprogutils(self):
+        url = 'https://github.com/bailey-lab/cppprogutils.git'
+        name = "cppprogutils"
+        buildCmd = ""
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git-headeronly", "v2.0.0")
+        #pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addHeaderOnlyVersion(url, ref)
+                pack.versions_[ref].additionalLdFlags_ = ["-lpthread"]
+                pack.versions_[ref].includePath_ = os.path.join(name, ref, name)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __bibseq(self):
+        url = "https://github.com/bailey-lab/bibseq.git"
+        name = "bibseq"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v2.3.0")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+                pack.versions_[ref].additionalLdFlags_ = ["-lcurl"]
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __bibseqDev(self):
+        url = "git@github.com:bailey-lab/bibseqPrivate.git"
+        name = "bibseqDev"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "master")
+        pack.bibProject_ = True
+        try:
+            if self.args.noInternet:
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+            elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                        pack = pickle.load(input)
+                        pack.defaultBuildCmd_ = buildCmd
+            else:
+                
+                refs = pack.getGitRefs(url)
+                for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                    pack.addVersion(url, ref)
+                    pack.versions_[ref].additionalLdFlags_ = ["-lcurl"]
+                Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                    pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        except Exception as inst: 
+            print CT.boldRed("failed to update cache for ") + name + " which doesn't matter unless you are installing this lib"
+        return pack 
+    
+    def __twobit(self):
+        url = "https://github.com/weng-lab/TwoBit.git"
+        name = "TwoBit"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v2.0.1")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __sharedMutex(self):
+        url = "https://github.com/nickjhathaway/cpp_shared_mutex.git"
+        name = "sharedMutex"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v0.3")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack 
+      
+    def __SeekDeep(self):
+        url = "https://github.com/bailey-lab/SeekDeep.git"
+        name = "SeekDeep"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v2.3.3")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __SeekDeepDev(self):
+        url = "git@github.com:bailey-lab/SeekDeepPrivate.git"
+        name = "SeekDeepDev"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "master")
+        pack.bibProject_ = True
+        try:
+            if self.args.noInternet:
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+            elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                        pack = pickle.load(input)
+                        pack.defaultBuildCmd_ = buildCmd
+            else:
+                refs = pack.getGitRefs(url)
+                for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                    pack.addVersion(url, ref)
+                Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+                with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                    pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        except Exception as inst:
+            print inst 
+            print CT.boldRed("failed to update cache for ") + name + " which doesn't matter unless you are installing this lib"
+        return pack
+    
+    def __seqserver(self):
+        url = "https://github.com/nickjhathaway/seqServer.git"
+        name = "seqServer"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v1.3.1")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __MIPWrangler(self):
+        url = "git@github.com:bailey-lab/MIPWrangler.git"
+        name = "MIPWrangler"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "develop")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __njhRInside(self):
+        url = "https://github.com/nickjhathaway/njhRInside.git"
+        name = "njhRInside"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "1.1.1")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+    
+    def __bibcpp(self):
+        url = "https://github.com/umass-bib/bibcpp.git"
+        name = "bibcpp"
+        buildCmd = self.__bibProjectBuildCmd()
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "git", "v2.3.0")
+        pack.bibProject_ = True
+        if self.args.noInternet:
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                pack = pickle.load(input)
+                pack.defaultBuildCmd_ = buildCmd
+        elif os.path.exists(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl')):
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'rb') as input:
+                    pack = pickle.load(input)
+                    pack.defaultBuildCmd_ = buildCmd
+        else:
+            refs = pack.getGitRefs(url)
+            for ref in [b.replace("/", "__") for b in refs.branches] + refs.tags:
+                pack.addVersion(url, ref)
+                pack.versions_[ref].additionalLdFlags_ = ["-lpthread", "-lz"]
+                if not Utils.isMac():
+                    pack.versions_[ref].additionalLdFlags_.append("-lrt")
+            Utils.mkdir(os.path.join(self.dirMaster_.cache_dir, name))
+            with open(os.path.join(self.dirMaster_.cache_dir, name, name + '.pkl'), 'wb') as output:
+                pickle.dump(pack, output, pickle.HIGHEST_PROTOCOL)
+        return pack
+
+    def __boost(self):
+        name = "boost"
+        buildCmd = ""
+        boostLibs = "filesystem,system"
+        if Utils.isMac():
+            #print "here"
+            setUpDir = os.path.dirname(os.path.abspath(__file__))
+            gccJamLoc =  os.path.join(setUpDir, "scripts/etc/boost/gcc.jam")
+            gccJamOutLoc = "{build_sub_dir}/tools/build/src/tools/gcc.jam"
+            #print gccJamLoc
+            #print gccJamOutLoc
+            installNameToolCmd  = """ 
+            && install_name_tool -change $(otool -L {local_dir}/lib/libboost_filesystem.dylib | egrep -o "\\S.*libboost_system.dylib") {local_dir}/lib/libboost_system.dylib {local_dir}/lib/libboost_filesystem.dylib
+            && install_name_tool -id {local_dir}/lib/libboost_filesystem.dylib {local_dir}/lib/libboost_filesystem.dylib
+            && install_name_tool -id {local_dir}/lib/libboost_system.dylib {local_dir}/lib/libboost_system.dylib
+            """
+        if self.args.clang:
+            if Utils.isMac():
+                buildCmd = """./bootstrap.sh --with-toolset=clang --prefix={local_dir} --with-libraries=""" + boostLibs + """
+                  &&  ./b2  toolset=clang cxxflags=\"-stdlib=libc++ -std=c++14\" linkflags=\"-stdlib=libc++\" -j {num_cores} install 
+                  &&  install_name_tool -change libboost_system.dylib {local_dir}/lib/libboost_system.dylib {local_dir}/lib/libboost_filesystem.dylib
+                  """
+            else:
+                buildCmd = """ln -s $(for x in $(which -a {CC}); do echo $(realpath $x); done | egrep clang | head -1) clang && PATH=$(realpath .):$PATH && ln -s $(for x in $(which -a {CXX}); do echo $(realpath $x); done | egrep clang | head -1) clang++ && ./bootstrap.sh --with-toolset=clang --prefix={local_dir}  --with-libraries=""" + boostLibs + """ &&  ./b2 toolset=clang cxxflags=\"-std=c++14\" -j {num_cores} install && rm clang && rm clang++"""
+        elif "g++" in self.args.CXX:
+            if "-" in self.args.CXX:
+                gccVer = self.args.CXX[(self.args.CXX.find("-") + 1):]
+                if Utils.isMac():
+                    buildCmd = "cp " + gccJamLoc + "  " + gccJamOutLoc + """ && ./bootstrap.sh --with-toolset=gcc --prefix={local_dir} --with-libraries=""" + boostLibs + """
+                     && echo "using gcc : """ + str(gccVer) + """ : {CXX} : <linker-type>darwin ;" >> tools/build/src/user-config.jam
+                     && ./b2 --toolset=gcc-""" + str(gccVer) +  """ -j {num_cores} install 
+                     """ + installNameToolCmd
+                else:
+                    buildCmd = """./bootstrap.sh --with-toolset=gcc --prefix={local_dir} --with-libraries=""" + boostLibs + """
+                     && echo "using gcc : """ + str(gccVer) + """ : {CXX} ;" >> tools/build/src/user-config.jam
+                     && ./b2 --toolset=gcc-""" + str(gccVer) +  """ -j {num_cores} install 
+                     """
+            else:
+                if Utils.isMac():
+                    buildCmd = "cp " + gccJamLoc + "  " + gccJamOutLoc + """ && echo "using gcc :  : g++ : <linker-type>darwin ;" >> tools/build/src/user-config.jam
+                     && ./bootstrap.sh --with-toolset=gcc --prefix={local_dir} --with-libraries=""" + boostLibs + """
+                     && ./b2 --toolset=gcc -j {num_cores} install 
+                     """ + installNameToolCmd
+                else:
+                    buildCmd = """./bootstrap.sh --with-toolset=gcc --prefix={local_dir} --with-libraries=""" + boostLibs + """
+                     && ./b2 --toolset=gcc -j {num_cores} install 
+                     """
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "1_60_0")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/boost/boost_1_58_0.tar.bz2", "1_58_0")
+        pack.versions_["1_58_0"].additionalLdFlags_ = ["-lboost_system", "-lboost_filesystem"]
+        pack.versions_["1_58_0"].libName_ = ""
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/boost/boost_1_59_0.tar.bz2", "1_59_0")
+        pack.versions_["1_59_0"].additionalLdFlags_ = ["-lboost_system", "-lboost_filesystem"]
+        pack.versions_["1_59_0"].libName_ = ""
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/boost/boost_1_60_0.tar.bz2", "1_60_0")
+        pack.versions_["1_60_0"].additionalLdFlags_ = ["-lboost_system", "-lboost_filesystem"]
+        pack.versions_["1_60_0"].libName_ = ""
+        return pack
     
     def getPackagesNames(self):
         return sorted(self.packages_.keys())
@@ -233,6 +1066,11 @@ class Packages():
             with open(filename, "a") as f:
                 for packVer in packVers:
                     pack = self.package(packVer.name)
+                    #if bib project, add the flags of it's dependencies
+                    if pack.bibProject_:
+                        cmd = "python ./setup.py --compfile compfile.mk --numCores 1 --append --outMakefile {makefileCommon}".format(makefileCommon = os.path.abspath(filename))
+                        dir = pack.getBuildSubDir(packVer.version)
+                        Utils.run_in_dir(cmd, dir)
                     pvIncFlags = self.getIncludeFlags(packVer)
                     if "" != pvIncFlags:
                         f.write("#" + packVer.name + ":" + packVer.version + " CXXFLAGS\n")
@@ -245,6 +1083,18 @@ class Packages():
                     f.flush()
         else:
             with open(filename, "a") as f:
+                f.write("#Utils\n")
+                f.write("# from http://stackoverflow.com/a/18258352\n")
+                f.write("rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))\n")
+                f.write("\n")
+                f.write("#Default CXXFLAGS\n")
+                f.write("COMLIBS += " + self.getDefaultIncludeFlags() + "\n")
+                dLdFlags = self.getDefaultLDFlags( )
+                if "" != dLdFlags:
+                    f.write("#Default LDFLAGS\n")
+                    f.write("LD_FLAGS += " + dLdFlags + "\n")
+                f.write("\n")
+                f.flush()
                 for packVer in packVers:
                     pack = self.package(packVer.name)
                     #if bib project, add the flags of it's dependencies
@@ -299,7 +1149,27 @@ class Packages():
             ret = ret + "-headerpad_max_install_names" 
         return ret
 
-
+    def __bibProjectBuildCmdOld(self):
+        cmd = """
+        python ./configure.py -CC {CC} -CXX {CXX} -externalLibDir {external} -prefix {localTop} 
+        && python ./setup.py --compfile compfile.mk --numCores {num_cores}
+        && make -j {num_cores} && make install"""
+        cmd = " ".join(cmd.split())
+        return cmd
+    
+    def __bibProjectBuildCmd(self):
+        cmd = """
+        python ./configure.py -CC {CC} -CXX {CXX} -externalLibDir {external} -prefix $(dirname {local_dir}) """
+        if self.args.noInternet:
+            cmd = cmd + """&& python ./setup.py --compfile compfile.mk --numCores {num_cores}
+             --outMakefile makefile-common.mk --overWrite --noInternet """
+        else:
+            cmd = cmd + """&& python ./setup.py --compfile compfile.mk --numCores {num_cores}
+             --outMakefile makefile-common.mk --overWrite """
+        cmd = cmd + """&& make clean
+        && make -j {num_cores} && make install"""
+        cmd = " ".join(cmd.split())
+        return cmd
     
     
     
@@ -357,16 +1227,55 @@ class Setup:
             print  p.name + ":" + str(p.version), CT.boldRed("failed to install")
 
     def __initSetUpFuncs(self):
-        self.setUps = {
-                       "armadillo": self.armadillo
-
+        self.setUps = {"cppitertools": self.cppitertools,
+                       "armadillo": self.armadillo}
+        '''
+                       "zi_lib": self.zi_lib,
+                       "boost": self.boost,
+                       
+                       "catch": self.catch,
+                       "cppprogutils": self.cppprogutils,
+                       "r": self.r,
+                       "bamtools": self.bamtools,
+                       "cppcms": self.cppcms,
+                       
+                       "bibseq": self.bibseq,
+                       "seekdeep": self.SeekDeep,
+                       "bibcpp": self.bibcpp,
+                       "bibseqdev": self.bibseqDev,
+                       "seekdeepdev": self.SeekDeepDev,
+                       "seqserver": self.seqserver,
+                       "njhrinside": self.njhRInside,
+                       "jsoncpp": self.jsoncpp,
+                       "pstreams": self.pstreams,
+                       "dlib": self.dlib,
+                       "libsvm": self.libsvm,
+                       "mongoc": self.mongoc,
+                       "mongocxx": self.mongocxx,
+                       "twobit" : self.twobit,
+                       "sharedmutex" : self.sharedMutex,
+                       "mathgl": self.mathgl,
+                       "magic": self.magic,
+                       "zlib": self.zlib,
+                       "flash": self.flash,
+                       "bowtie2": self.bowtie2,
+                       "muscle": self.muscle,
+                       "lastz": self.lastz,
+                       "samtools": self.samtools,
+                       "bcftools": self.bcftools,
+                       "hts": self.hts,
+                       "restbed": self.restbed,
+                       "mipwrangler": self.MIPWrangler
                        }
-
+        
+        "mlpack": self.mlpack,
+        "liblinear": self.liblinear,
+        '''
     def printAvailableSetUps(self):
         self.__initSetUpFuncs()
         print "Available installs:"
         print "To Install use ./setup.py --libs lib1,lib2,lib3"
-        print "E.g. ./setup.py --libs armadillo:7.500.2"
+        print "E.g. ./setup.py --libs bamtools,boost"
         installs = self.setUps.keys()
         installs.sort()
         for set in installs:
@@ -680,7 +1589,12 @@ class Setup:
             libPath = os.path.join(bPaths.local_dir, "lib")
             if(os.path.exists(libPath)):
                 Utils.fixDyLibOnMac(libPath)
-
+        
+    def __defaultBibBuild(self, package, version):
+        if "develop" == version or "release" in version or "master" == version:
+            self.__defaultBuild(package, version, False)
+        else:
+            self.__defaultBuild(package, version, True)
             
     def linkInBin(self, package, version, overwrite = False):
         self.packages_.checkForPackVer(LibNameVer(package, version))
@@ -701,12 +1615,213 @@ class Setup:
                             raise Exception("File: " + os.path.join(masterBinDir, bFile) + " already exists, use --overWrite to overWrite")
                     print "Linking " + CT.boldGreen(bFileFull) + " to " + CT.boldBlue(os.path.join(masterBinDir, bFile))
                     os.symlink(bFileFull, os.path.join(masterBinDir, bFile))
+            
+        
+    def updateBibProjects(self, bibProjects):
+        inLibs = bibProjects.split(",")
+        for lib in inLibs:
+            if ":" not in lib.lower():
+                raise Exception("Need to give version for " + lib)
+            else:
+                libSplit = lib.split(":")
+                #self.packages_.addPackage(self.setUpsNeeded,LibNameVer(libSplit[0].lower(),libSplit[1]))
+                self.setUpsNeeded.append(LibNameVer(libSplit[0].lower(),libSplit[1]))
+        for set in self.setUpsNeeded:
+            self.packages_.checkForPackVer(set)
+            pack = self.__package(set.name)
+            bPaths = pack.versions_[set.version].bPaths_
+            if os.path.exists(bPaths.local_dir):
+                print "Removing " + CT.boldBlack(bPaths.local_dir)
+                Utils.rm_rf(bPaths.local_dir)
+        for set in self.setUpsNeeded:
+            pack = self.__package(set.name)
+            bPath = pack.versions_[set.version].bPaths_
+            if os.path.exists(os.path.join(bPath.build_dir,set.name, "makefile-common.mk")):
+                os.remove(os.path.join(bPath.build_dir,set.name, "makefile-common.mk"))
+            self.__setup(set.name, set.version)
+        for p in self.installed:
+            print p.name + ":" + str(p.version), CT.boldGreen("installed")
 
+        for p in self.failedInstall:
+            print  p.name + ":" + str(p.version), CT.boldRed("failed to install")
+        
+    
+    def installRPackageSource(self,version, sourceFile):
+        rPack = self.__package("r")
+        if not rPack.hasVersion(version):
+            raise Exception("No set up for version " + str(version) + " for " + str("R"))
+        bPath = rPack.versions_[version].bPaths_
+        for pack in sourceFile.split(","):
+            rHomeLoc = "bin/R RHOME"
+            if Utils.isMac():
+                rHomeLoc = "R.framework/Resources/bin/R RHOME"
+            cmd = """echo 'install.packages(\"{SOURCEFILE}\", repos = NULL, type="source", Ncpus = {num_cores}, lib =.libPaths()[length(.libPaths()  )])' | $({local_dir}/{RHOMELOC})/bin/R --slave --vanilla
+                """.format(local_dir=Utils.shellquote(bPath.local_dir).replace(' ', '\ '),SOURCEFILE = pack, RHOMELOC =rHomeLoc, num_cores=self.num_cores())
+            print CT.boldBlack(cmd)
+            cmd = " ".join(cmd.split())
+            Utils.run(cmd)
 
+    def installRPackageName(self,version, packageName):
+        rPack = self.__package("r")
+        if not rPack.hasVersion(version):
+            raise Exception("No set up for version " + str(version) + " for " + str("R"))
+        bPath = rPack.versions_[version].bPaths_
+        for pack in packageName.split(","):
+            rHomeLoc = "bin/R RHOME"
+            if Utils.isMac():
+                rHomeLoc = "R.framework/Resources/bin/R RHOME"
+            cmd = """echo 'install.packages(\"{PACKAGENAME}\", repos=\"http://cran.us.r-project.org\", Ncpus = {num_cores}, lib =.libPaths()[length(.libPaths()  )])'  | $({local_dir}/{RHOMELOC})/bin/R --slave --vanilla
+                """.format(local_dir=Utils.shellquote(bPath.local_dir).replace(' ', '\ '),PACKAGENAME = pack, RHOMELOC =rHomeLoc,num_cores=self.num_cores() )
+            print CT.boldBlack(cmd)
+            cmd = " ".join(cmd.split())
+            Utils.run(cmd)
+
+    def boost(self, version):
+        self.__defaultBuild("boost", version)
+
+    def r(self, version):
+        package = "r"
+        verSplit = version.split(".")
+        verNameStr = verSplit[0] + verSplit[1] + verSplit[2]
+        verNameInt = int(verNameStr)
+        #print verSplit
+        #print verNameStr
+        #print verNameInt
+        if verNameInt >= 330 and Utils.isMac( ):
+            pack = self.__package(package)
+            rHomeLoc = "bin/R RHOME"
+            #&& echo 'install.packages(c(\"gridExtra\", \"ape\", \"ggplot2\", \"seqinr\",\"Rcpp\", \"RInside\",\"devtools\"),
+            #r.dylib needs rblas
+            #rlapack needs r and rblas
+            #rinside needs r
+            #install_name_tool -change $(otool -L $(realpath .)/lib/R/library/RInside/lib/libRInside.dylib | egrep -o "\s.*libR.dylib") $(realpath .)/lib/R/lib/libR.dylib $(realpath .)/lib/R/library/RInside/lib/libRInside.dylib
+            buildCmd = """./configure --prefix={local_dir} --enable-R-shlib --with-x=no CC={CC} CXX={CXX} OBJC={CC}
+                    && make -j {num_cores}
+                    && make install
+                    && install_name_tool -id {local_dir}/lib/R/lib/libR.dylib {local_dir}/lib/R/lib/libR.dylib
+                    && install_name_tool -id {local_dir}/lib/R/lib/libRlapack.dylib {local_dir}/lib/R/lib/libRlapack.dylib
+                    && install_name_tool -id {local_dir}/lib/R/lib/libRblas.dylib {local_dir}/lib/R/lib/libRblas.dylib 
+                    && install_name_tool -change $(otool -L {local_dir}/lib/R/lib/libR.dylib | egrep -o "\s.*libRblas.dylib") {local_dir}/lib/R/lib/libRblas.dylib {local_dir}/lib/R/lib/libR.dylib
+                    && install_name_tool -change $(otool -L {local_dir}/lib/R/lib/libRlapack.dylib | egrep -o "\s.*libRblas.dylib") {local_dir}/lib/R/lib/libRblas.dylib {local_dir}/lib/R/lib/libRlapack.dylib
+                    && install_name_tool -change $(otool -L {local_dir}/lib/R/lib/libRlapack.dylib | egrep -o "\s.*libR.dylib") {local_dir}/lib/R/lib/libR.dylib {local_dir}/lib/R/lib/libRlapack.dylib
+                    && echo 'install.packages(c(\"gridExtra\", \"ape\", \"ggplot2\", \"seqinr\",\"Rcpp\", \"RInside\"),
+                    repos=\"http://cran.us.r-project.org\", Ncpus = {num_cores}, lib =.libPaths()[length(.libPaths()  )])' | $({local_dir}/""" + rHomeLoc + """)/bin/R --slave --vanilla
+                    """
+            buildCmd = " ".join(buildCmd.split())
+            pack.defaultBuildCmd_ = buildCmd
+        self.__defaultBuild("r", version)
+
+    def bamtools(self, version):
+        self.__defaultBuild("bamtools", version)
+
+    def bibcpp(self, version):
+        self.__defaultBibBuild("bibcpp", version)
+
+    def bibseq(self, version):
+        self.__defaultBibBuild("bibseq", version)
+        
+    def twobit(self, version):
+        self.__defaultBibBuild("twobit", version)
+        
+            
+    def sharedMutex(self, version):
+        self.__defaultBibBuild("sharedmutex", version)
+    
+    def bibseqDev(self, version):
+        self.__defaultBibBuild("bibseqdev", version)
+        
+    def SeekDeep(self, version):
+        self.__defaultBibBuild("seekdeep", version)
+    
+    def SeekDeepDev(self, version):
+        self.__defaultBibBuild("seekdeepdev", version)
+        
+    def seqserver(self, version):
+        self.__defaultBibBuild("seqserver", version)
+        
+    def MIPWrangler(self, version):
+        self.__defaultBibBuild("mipwrangler", version)
+        
+    def njhRInside(self, version):
+        self.__defaultBibBuild("njhrinside", version)
+        
+    def cppprogutils(self, version):
+        self.__defaultBibBuild("cppprogutils", version)
+    
+    def jsoncpp(self, version):
+        self.__defaultBuild("jsoncpp", version)
+        
+    def mongoc(self, version):
+        self.__defaultBuild("mongoc", version)
+        
+    def mongocxx(self, version):
+        package = "mongocxx"
+        pack = self.__package(package)
+        if not pack.hasVersion(version):
+            raise Exception("No set up for version " + str(version) + " for " + str(package))
+        packVer = pack.versions_[version]
+        bPaths = packVer.bPaths_
+        pack.defaultBuildCmd_ = pack.defaultBuildCmd_.format(mongoc_ver = packVer.depends_[0].version,external = self.dirMaster_.base_dir, build_sub_dir = Utils.shellquote(bPaths.build_sub_dir), local_dir=Utils.shellquote(bPaths.local_dir), num_cores=self.num_cores(), CC=self.CC, CXX=self.CXX)
+        self.__defaultBuild("mongocxx", version)
+    
+    def cppcms(self, version):
+        self.__defaultBuild("cppcms", version)
 
     def armadillo(self, version):
         self.__defaultBuild("armadillo", version)
 
+    def zi_lib(self, version):
+        self.__defaultBuild("zi_lib", version)
+        
+    def pstreams(self, version):
+        self.__defaultBuild("pstreams", version)
+
+    def cppitertools(self, version):
+        self.__defaultBuild("cppitertools", version)
+    
+    def dlib(self, version):
+        self.__defaultBuild("dlib", version)
+        
+    def libsvm(self, version):
+        self.__defaultBuild("libsvm", version)
+
+    def catch(self, version):
+        self.__defaultBuild("catch", version)
+        
+    def mathgl(self, version):
+        self.__defaultBuild("mathgl", version)
+        
+    def magic(self, version):
+        self.__defaultBuild("magic", version)
+    
+    def zlib(self, version):
+        self.__defaultBuild("zlib", version)
+        
+    def flash(self, version):
+        self.__defaultBuild("flash", version)
+    
+    def bowtie2(self, version):
+        self.__defaultBuild("bowtie2", version)
+    
+    def muscle(self, version):
+        self.__defaultBuild("muscle", version) 
+    
+    def lastz(self, version):
+        self.__defaultBuild("lastz", version) 
+    
+    def samtools(self, version):
+        self.__defaultBuild("samtools", version)   
+
+    def bcftools(self, version):
+        self.__defaultBuild("bcftools", version)  
+    
+    def hts(self, version):
+        self.__defaultBuild("hts", version)
+        
+    def restbed(self, version):
+        self.__defaultBuild("restbed", version)   
+    #
+    
     
     def downloadFiles(self):
         for set in self.setUpsNeeded:
@@ -795,8 +1910,12 @@ def parse_args():
     parser.add_argument('--printLibs', action = "store_true", help="Print Available Libs")
     parser.add_argument('--printGitRefs', action = "store_true", help="Print Git branhes and tags for git projects")
     parser.add_argument('--forceUpdate', action = "store_true", help="Remove already installed libs and re-install")
+    parser.add_argument('--updateBibProjects', type = str, help="Remove already installed libs and re-install")
     parser.add_argument('--CC', type=str, nargs=1)
     parser.add_argument('--CXX', type=str, nargs=1)
+    parser.add_argument('--instRPackageName',type=str, nargs=1)
+    parser.add_argument('--instRPackageSource',type=str, nargs=1) 
+    parser.add_argument('--addBashCompletion', dest = 'addBashCompletion', action = 'store_true')
     parser.add_argument('--numCores', type=str)
     parser.add_argument('--outMakefile', type=str)
     parser.add_argument('--overWrite', action = 'store_true')
@@ -806,6 +1925,7 @@ def parse_args():
     parser.add_argument('--verbose', action = 'store_true')
     parser.add_argument('--symlinkBin', action = 'store_true', help = "Symlink in executables into a directory bin next to external")
     parser.add_argument('--clearCache', action = 'store_true')
+    
     return parser.parse_args()
 
 
@@ -814,10 +1934,28 @@ def main():
     args = parse_args()
     s = Setup(args)
     s.externalChecks()
-
+    if(args.instRPackageName):
+        s.installRPackageName(args.instRPackageName[0], s.packages_["r"].defaultVersion_)
+        return 0
+    if(args.instRPackageSource):
+        s.installRPackageSource(args.instRPackageSource[0], s.packages_["r"].defaultVersion_)
+        return 0
+    if args.updateBibProjects:
+        s.updateBibProjects(args.updateBibProjects)
+        return 0
     if args.printLibs:
         s.printAvailableSetUps()
         return 0
+    elif args.addBashCompletion:
+        if(os.path.isdir("./bashCompletes")):
+            cmd = "echo >> ~/.bash_completion && cat bashCompletes/* >> ~/.bash_completion"
+            Utils.run(cmd)
+        if(os.path.isdir("./bash_completion.d")):
+            cmd = "echo >> ~/.bash_completion && cat bash_completion.d/* >> ~/.bash_completion"
+            Utils.run(cmd)
+        if(os.path.isdir("./etc/bash_completion.d")):
+            cmd = "echo >> ~/.bash_completion && cat ./etc/bash_completion.d/* >> ~/.bash_completion"
+            Utils.run(cmd)
     else:
         if len(s.setUpsNeeded) == 0 and not args.compfile:
             s.printAvailableSetUps()
@@ -830,7 +1968,6 @@ def main():
                 s.downloadFiles()
             else:
                 s.setup()
-                
                 if args.outMakefile:
                     packVers = []
                     for set in s.setUpsNeeded:

@@ -6,7 +6,10 @@ endif
 ifdef LDFLAGS 
 	ENV_LDFLAGS := $(LDFLAGS)
 endif
-
+ifneq (,$(wildcard compfile.mk))
+COMPFILE=compfile.mk
+endif
+include $(COMPFILE)
 #include 
 include $(ROOT)/makefile-common.mk
 
@@ -15,9 +18,6 @@ HOMEBASEDIR=$(INSTALL_DIR)
 ifeq ($(HOMEBASEDIR),./$(CXXOUTNAME))
 	HOMEBASEDIR = $(realpath ./)
 endif
-
-
-CXXOUTNAME=btsne
 
 #os name
 UNAME_S := $(shell uname -s)
@@ -83,6 +83,9 @@ $(BIN): $(OBJ)
 
 ############ remove the objects that were dependant on any changed headers and check for compfile.mk
 do_preReqs: 
+ifndef COMPFILE
+	$(error compfile is not set, do either make COMPFILE=aCompfile.mk or create a file called compfile.mk)
+endif
 	scripts/setUpScripts/rmNeedToRecompile.py -obj $(OBJ_DIR) -src src/
 
 	

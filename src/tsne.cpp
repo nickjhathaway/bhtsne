@@ -42,6 +42,8 @@
 #include "sptree.h"
 #include "tsne.h"
 
+#include <cppitertools/range.hpp>
+
 using namespace std;
 
 // Perform t-SNE
@@ -50,14 +52,20 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
   arma::mat score;
   arma::vec latent;
   arma::vec tsquared;
-
+  std::cout << X.n_cols << std::endl;
+  std::cout << X.n_rows << std::endl;
   arma::princomp(coeff, score, latent, tsquared, X);
 
   arma::mat x = X * coeff;
   
-  arma::mat ret(x.n_rows, params.no_dims);
-  
-  run(x.memptr(), x.n_rows, x.n_cols, y.memptr(),
+
+  std::cout << __PRETTY_FUNCTION__ << " made it at least" << std::endl;
+
+
+  arma::mat ret(x.n_rows, params.no_dims_);
+  std::cout << x.n_cols << std::endl;
+  std::cout << x.n_rows << std::endl;
+  run(x.memptr(), x.n_rows, x.n_cols, ret.memptr(),
       params.no_dims_, params.perplexity_, params.theta_, params.rand_seed_,
       params.skip_random_init_, params.max_iter_, params.stop_lying_iter_,
       params.mom_switch_iter_);
@@ -82,6 +90,7 @@ void TSNE::run(double* X, int N, int D, double* Y,
   }
 
   // Determine whether we are using an exact algorithm
+  std::cout << "N" << N << std::endl;
   if(N - 1 < 3 * perplexity) { printf("Perplexity too large for the number of data points!\n"); exit(1); }
   printf("Using no_dims = %d, perplexity = %f, and theta = %f\n", no_dims, perplexity, theta);
   bool exact = (theta == .0) ? true : false;
@@ -123,13 +132,13 @@ void TSNE::run(double* X, int N, int D, double* Y,
     // Symmetrize input similarities
     printf("Symmetrizing...\n");
     int nN = 0;
-    for(int n = 0; n < N; n++) {
-      int mN = (n + 1) * N;
-      for(int m = n + 1; m < N; m++) {
-	P[nN + m] += P[mN + n];
-	P[mN + n]  = P[nN + m];
-	mN += N;
-      }
+		for (int n = 0; n < N; n++) {
+			int mN = (n + 1) * N;
+			for (int m = n + 1; m < N; m++) {
+				P[nN + m] += P[mN + n];
+				P[mN + n] = P[nN + m];
+				mN += N;
+			}
       nN += N;
     }
     double sum_P = .0;
@@ -189,45 +198,45 @@ void TSNE::run(double* X, int N, int D, double* Y,
       Y[i] = Y[i] + uY[i];
     }
 
-    // Make solution zero-mean
-    zeroMean(Y, N, no_dims);
+		// Make solution zero-mean
+		zeroMean(Y, N, no_dims);
 
-    // Stop lying about the P-values after a while, and switch momentum
-    if(iter == stop_lying_iter) {
-      if(exact) {
-	for(int i = 0; i < N * N; i++) {
-	  P[i] /= 12.0;
-	}
-      } else {
-	for(int i = 0; i < row_P[N]; i++) {
-	  val_P[i] /= 12.0;
-	}
-      }
-    }
-    if(iter == mom_switch_iter) {
-      momentum = final_momentum;
-    }
+		// Stop lying about the P-values after a while, and switch momentum
+		if (iter == stop_lying_iter) {
+			if (exact) {
+				for (int i = 0; i < N * N; i++) {
+					P[i] /= 12.0;
+				}
+			} else {
+				for (int i = 0; i < row_P[N]; i++) {
+					val_P[i] /= 12.0;
+				}
+			}
+		}
+		if (iter == mom_switch_iter) {
+			momentum = final_momentum;
+		}
 
-    // Print out progress
-    if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
-      end = clock();
-      double C = .0;
-      if(exact) {
-	C = evaluateError(P, Y, N, no_dims);
-      } else {
-	C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta);  // doing approximate computation here!
-      }
-      
-      if(iter == 0){
-	printf("Iteration %d: error is %f\n", iter + 1, C);
-      } else {
-	total_time += (float) (end - start) / CLOCKS_PER_SEC;
-	printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n",
-	       iter, C, (float) (end - start) / CLOCKS_PER_SEC);
-      }
-      start = clock();
-    }
-  }
+		// Print out progress
+		if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
+			end = clock();
+			double C = .0;
+			if (exact) {
+				C = evaluateError(P, Y, N, no_dims);
+			} else {
+				C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta); // doing approximate computation here!
+			}
+
+			if (iter == 0) {
+				printf("Iteration %d: error is %f\n", iter + 1, C);
+			} else {
+				total_time += (float) (end - start) / CLOCKS_PER_SEC;
+				printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n",
+						iter, C, (float) (end - start) / CLOCKS_PER_SEC);
+			}
+			start = clock();
+		}
+	}
   end = clock(); total_time += (float) (end - start) / CLOCKS_PER_SEC;
 
   // Clean up memory
