@@ -50,12 +50,9 @@ using namespace std;
 // Perform t-SNE
 arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
   arma::mat coeff;
-  arma::mat score;
-  arma::vec latent;
-  arma::vec tsquared;
 
   const arma::mat x1 = arma::normalise(X);
-  arma::princomp(coeff, score, latent, tsquared, x1);
+  arma::princomp(coeff, x1);
 
   auto n_cols = std::min(static_cast<uint32_t>(coeff.n_cols), params.initial_dim);
   const auto subCoeff = coeff.submat(0, 0, coeff.n_rows - 1, n_cols - 1);
