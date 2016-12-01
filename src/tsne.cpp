@@ -54,7 +54,14 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
   arma::vec tsquared;
   arma::princomp(coeff, score, latent, tsquared, X);
 
-  arma::mat x = X * coeff;
+  auto cols = coeff.n_cols;
+  if(cols > params.initial_dim){
+    cols = params.initial_dim;
+  }
+  const auto subCoeff = coeff.submat(0, 0, coeff.n_rows - 1, cols - 1);
+  std::cout << "subCoeff: n_rows: " << subCoeff.n_rows << ", ncols: " << subCoeff.n_cols
+	    << std::endl;
+  arma::mat x = X * subCoeff;
   arma::mat ret(x.n_rows, params.no_dims_);
 
   run(x.memptr(), x.n_rows, x.n_cols, ret.memptr(),

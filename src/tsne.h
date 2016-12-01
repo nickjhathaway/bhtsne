@@ -39,6 +39,7 @@ struct TSNEArgs{
   double theta_ = 0.5;        // gradient accuracy
   double perplexity_ = 30;     // perplexity
   uint32_t no_dims_ = 2;         // output dimensionality
+  uint32_t initial_dim = 50;  // reduce # of cols via PCA
   bool skip_random_init_ = false;
   uint32_t max_iter_ = 1000;    // maximum number of iterations
   uint32_t stop_lying_iter_=250;
