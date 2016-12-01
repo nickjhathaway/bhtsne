@@ -52,12 +52,18 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
   arma::mat coeff;
 
   const arma::mat x1 = arma::normalise(X);
+  std::cout << "about run to PCA..." << std::endl;
   arma::princomp(coeff, x1);
-
-  auto n_cols = std::min(static_cast<uint32_t>(coeff.n_cols), params.initial_dim);
-  const auto subCoeff = coeff.submat(0, 0, coeff.n_rows - 1, n_cols - 1);
+  std::cout << "done PCA..." << std::endl;
+  
+  std::cout << "coeff: n_rows: " << coeff.n_rows << ", ncols: " << coeff.n_cols
+	    << std::endl;
+  
+  auto n_rows = std::min(static_cast<uint32_t>(coeff.n_rows), params.initial_dim);
+  const auto subCoeff = coeff.submat(0, 0, n_rows - 1, coeff.n_cols - 1);
   std::cout << "subCoeff: n_rows: " << subCoeff.n_rows << ", ncols: " << subCoeff.n_cols
 	    << std::endl;
+
   arma::mat x2 = x1 * subCoeff;
   arma::mat ret(x2.n_rows, params.no_dims_);
 
