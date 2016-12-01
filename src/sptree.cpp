@@ -30,10 +30,10 @@
  *
  */
 
-#include <math.h>
-#include <float.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cmath>
+#include <cfloat>
+#include <cstdlib>
+#include <cstdio>
 #include <cmath>
 #include "sptree.h"
 

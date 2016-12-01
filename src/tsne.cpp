@@ -33,12 +33,12 @@
 
 
 #include <cstdint>
-#include <math.h>
-#include <float.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cmath>
+#include <cfloat>
+#include <cstdlib>
+#include <cstdio>
 #include <cstring>
-#include <time.h>
+#include <ctime>
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"

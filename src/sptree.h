@@ -34,7 +34,7 @@
 #ifndef SPTREE_H
 #define SPTREE_H
 
-using namespace std;
+
 
 
 class Cell {
