@@ -170,7 +170,7 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
     
     // Compute asymmetric pairwise input similarities
     computeGaussianPerplexity(X, N, D, &row_P, &col_P, &val_P, perplexity,
-			      uint32_t{3 * perplexity});
+			      static_cast<uint32_t>(3 * perplexity));
 
     // Symmetrize input similarities
     symmetrizeMatrix(&row_P, &col_P, &val_P, N);
@@ -626,7 +626,7 @@ void TSNE::computeGaussianPerplexity(double* X, uint32_t N, uint32_t D, uint32_t
       cur_P[m] /= sum_P;
     }
     for(uint32_t m = 0; m < K; m++) {
-      col_P[row_P[n] + m] = uint32_t{indices[m + 1].index()};
+      col_P[row_P[n] + m] = static_cast<uint32_t>(indices[m + 1].index());
       val_P[row_P[n] + m] = cur_P[m];
     }
   }
