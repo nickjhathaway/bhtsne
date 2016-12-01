@@ -228,8 +228,10 @@ class Packages():
         self.args = args
         self.packages_ = {} #dictionary to hold path infos
         self.packages_["armadillo"] = self.__armadillo()
+        self.packages_["libpca"] = self.__libpca()
         self.packages_["cppitertools"] = self.__cppitertools()
         '''
+        
         self.packages_["zi_lib"] = self.__zi_lib()
         self.packages_["pstreams"] = self.__pstreams()
         
@@ -265,6 +267,8 @@ class Packages():
         self.packages_["hts"] = self.__hts()
         self.packages_["restbed"] = self.__restbed()
         self.packages_["mipwrangler"] = self.__MIPWrangler()
+
+
         self.packages_["mlpack"] = self.__mlpack()
         self.packages_["liblinear"] = self.__liblinear()
         '''
@@ -500,6 +504,23 @@ class Packages():
         pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/armadillo/armadillo-6.100.0.tar.gz", "6.100.0")
         pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/armadillo/armadillo-5.600.2.tar.gz", "5.600.2")
         return pack
+    
+    def __libpca(self):
+        name = "libpca"
+        buildCmd = """CC={CC} CXX={CXX}
+        LDFLAGS="-Wl,-rpath,{external}/local/armadillo/7.500.2/armadillo/lib -L{external}/local/armadillo/7.500.2/armadillo/lib" CXXFLAGS="-isystem{external}/local/armadillo/7.500.2/armadillo/include"
+          ./configure --prefix {local_dir} && make -j {num_cores} install"""
+        buildCmd = " ".join(buildCmd.split())
+        pack = CPPLibPackage(name, buildCmd, self.dirMaster_, "file", "7.500.2")
+        pack.addVersion("http://baileylab.umassmed.edu/sourceCodes/libpca/libpca-1.3.3.tar.gz", "1.3.3", [LibNameVer("armadillo", "7.500.2")])
+        pack.defaultBuildCmd_ = """CC={CC} CXX={CXX}
+        LDFLAGS="-Wl,-rpath,{external}/local/armadillo/7.500.2/armadillo/lib -L{external}/local/armadillo/7.500.2/armadillo/lib" CXXFLAGS="-isystem{external}/local/armadillo/7.500.2/armadillo/include"
+          ./configure --prefix {local_dir}  && make -j {num_cores} install"""
+        pack.defaultBuildCmd_ = " ".join(pack.defaultBuildCmd_.split())
+        pack.versions_["1.3.3"] .altLibName_ = "pca" 
+        return pack
+    
+    
     
     def __muscle(self):
         name = "muscle"
@@ -1227,10 +1248,11 @@ class Setup:
             print  p.name + ":" + str(p.version), CT.boldRed("failed to install")
 
     def __initSetUpFuncs(self):
-        self.setUps = {"cppitertools": self.cppitertools,
-                       "armadillo": self.armadillo}
+        self.setUps = {"armadillo": self.armadillo,
+                       "libpca": self.libpca,
+                       "cppitertools": self.cppitertools}
         '''
-                       "zi_lib": self.zi_lib,
+        				"zi_lib": self.zi_lib,
                        "boost": self.boost,
                        
                        "catch": self.catch,
@@ -1267,7 +1289,7 @@ class Setup:
                        "restbed": self.restbed,
                        "mipwrangler": self.MIPWrangler
                        }
-        
+
         "mlpack": self.mlpack,
         "liblinear": self.liblinear,
         '''
@@ -1769,6 +1791,9 @@ class Setup:
 
     def armadillo(self, version):
         self.__defaultBuild("armadillo", version)
+    
+    def libpca(self, version):
+        self.__defaultBuild("libpca", version)
 
     def zi_lib(self, version):
         self.__defaultBuild("zi_lib", version)
