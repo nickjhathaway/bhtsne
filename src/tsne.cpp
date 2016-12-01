@@ -52,19 +52,10 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
   arma::mat score;
   arma::vec latent;
   arma::vec tsquared;
-  std::cout << X.n_cols << std::endl;
-  std::cout << X.n_rows << std::endl;
   arma::princomp(coeff, score, latent, tsquared, X);
 
   arma::mat x = X * coeff;
-  
-
-  std::cout << __PRETTY_FUNCTION__ << " made it at least" << std::endl;
-
-
   arma::mat ret(x.n_rows, params.no_dims_);
-  std::cout << x.n_cols << std::endl;
-  std::cout << x.n_rows << std::endl;
   run(x.memptr(), x.n_rows, x.n_cols, ret.memptr(),
       params.no_dims_, params.perplexity_, params.theta_, params.rand_seed_,
       params.skip_random_init_, params.max_iter_, params.stop_lying_iter_,
