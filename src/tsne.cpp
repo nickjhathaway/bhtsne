@@ -552,10 +552,13 @@ void TSNE::computeGaussianPerplexity(double* X, uint32_t N, uint32_t D, uint32_t
 
   // Build ball tree on data set
   VpTree<DataPoint, euclidean_distance> tree;
-  vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+
+  std::vector<DataPoint> obj_X;
+  obj_X.reserve(N);
   for(uint32_t n = 0; n < N; n++) {
-    obj_X[n] = DataPoint(D, n, X + n * D);
+    obj_X.emplace_back(D, n, X + n * D);
   }
+  
   tree.create(obj_X);
 
   // Loop over all points to find nearest neighbors

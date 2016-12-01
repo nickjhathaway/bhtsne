@@ -47,52 +47,64 @@
 
 class DataPoint
 {
-    int _ind;
+    uint32_t ind_;
 
 public:
-    double* _x;
-    int _D;
+    double* x_;
+    uint32_t D_;
+    
     DataPoint() {
-        _D = 1;
-        _ind = -1;
-        _x = NULL;
+        D_ = 1;
+        ind_ = std::numeric_limits<uint32_t>::max();
+        x_ = NULL;
     }
     DataPoint(int D, int ind, double* x) {
-        _D = D;
-        _ind = ind;
-        _x = (double*) malloc(_D * sizeof(double));
-        for(int d = 0; d < _D; d++) _x[d] = x[d];
+        D_ = D;
+        ind_ = ind;
+        x_ = (double*) malloc(D_ * sizeof(double));
+        for(int d = 0; d < D_; d++) x_[d] = x[d];
     }
-    DataPoint(const DataPoint& other) {                     // this makes a deep copy -- should not free anything
+    DataPoint(const DataPoint& other) {
+      // this makes a deep copy -- should not free anything
         if(this != &other) {
-            _D = other.dimensionality();
-            _ind = other.index();
-            _x = (double*) malloc(_D * sizeof(double));      
-            for(int d = 0; d < _D; d++) _x[d] = other.x(d);
+            D_ = other.dimensionality();
+            ind_ = other.index();
+            x_ = (double*) malloc(D_ * sizeof(double));      
+            for(int d = 0; d < D_; d++) {
+	      x_[d] = other.x(d);
+	    }
         }
     }
-    ~DataPoint() { if(_x != NULL) free(_x); }
-    DataPoint& operator= (const DataPoint& other) {         // asignment should free old object
+    
+    ~DataPoint() {
+      if(x_ != NULL) {
+	free(x_);
+      }
+    }
+
+    DataPoint& operator= (const DataPoint& other) {
+      // assignment should free old object
         if(this != &other) {
-            if(_x != NULL) free(_x);
-            _D = other.dimensionality();
-            _ind = other.index();
-            _x = (double*) malloc(_D * sizeof(double));
-            for(int d = 0; d < _D; d++) _x[d] = other.x(d);
+            if(x_ != NULL) free(x_);
+            D_ = other.dimensionality();
+            ind_ = other.index();
+            x_ = (double*) malloc(D_ * sizeof(double));
+            for(int d = 0; d < D_; d++) x_[d] = other.x(d);
         }
         return *this;
     }
-    int index() const { return _ind; }
-    int dimensionality() const { return _D; }
-    double x(int d) const { return _x[d]; }
+    
+    uint32_t index() const { return ind_; }
+    uint32_t dimensionality() const { return D_; }
+    double x(uint32_t d) const { return x_[d]; }
 };
 
-double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
+inline double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
     double dd = .0;
-    double* x1 = t1._x;
-    double* x2 = t2._x;
+    double* x1 = t1.x_;
+    double* x2 = t2.x_;
     double diff;
-    for(int d = 0; d < t1._D; d++) {
+    for(int d = 0; d < t1.D_; d++) {
         diff = (x1[d] - x2[d]);
         dd += diff * diff;
     }
@@ -128,7 +140,7 @@ public:
         std::priority_queue<HeapItem> heap;
         
         // Variable that tracks the distance to the farthest point in our results
-        _tau = DBL_MAX;
+        _tau = std::numeric_limits<double>::max();
         
         // Perform the search
         search(_root, target, k, heap);
@@ -148,7 +160,7 @@ public:
     
 private:
     std::vector<T> _items;
-    double _tau;
+    double _tau = 0;
     
     // Single node of a VP tree (has a point and radius; left children are closer to point than the radius)
     struct Node
