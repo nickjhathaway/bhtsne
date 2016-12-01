@@ -105,6 +105,7 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
     printf("Memory allocation failed!\n");
     exit(1);
   }
+
   for(uint32_t i = 0; i < N * no_dims; i++){
     uY[i] =  .0;
   }
@@ -117,11 +118,13 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
   start = clock();
   zeroMean(X, N, D);
   double max_X = .0;
+
   for(uint32_t i = 0; i < N * D; i++) {
     if(fabs(X[i]) > max_X) {
       max_X = fabs(X[i]);
     }
   }
+
   for(uint32_t i = 0; i < N * D; i++) {
     X[i] /= max_X;
   }
@@ -209,7 +212,7 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
   }
   start = clock();
 
-  for(uint32_t iter = 0; iter < max_iter; iter++) {
+  for(uint32_t iter = 0; iter < max_iter; ++iter) {
 
     // Compute (approximate) gradient
     if(exact) {
@@ -289,22 +292,22 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
   printf("Fitting performed in %4.2f seconds.\n", total_time);
 }
 
-
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
 void TSNE::computeGradient(double* P, uint32_t* inp_row_P, uint32_t* inp_col_P, double* inp_val_P, double* Y, uint32_t N, uint32_t D, double* dC, double theta)
 {
 
   // Construct space-partitioning tree on current map
-  SPTree* tree = new SPTree(D, Y, N);
+  SPTree tree(D, Y, N);
 
   // Compute all terms required for t-SNE gradient
   double sum_Q = .0;
   double* pos_f = (double*) calloc(N * D, sizeof(double));
   double* neg_f = (double*) calloc(N * D, sizeof(double));
   if(pos_f == nullptr || neg_f == nullptr) { printf("Memory allocation failed!\n"); exit(1); }
-  tree->computeEdgeForces(inp_row_P, inp_col_P, inp_val_P, N, pos_f);
+  tree.computeEdgeForces(inp_row_P, inp_col_P, inp_val_P, N, pos_f);
+  
   for(uint32_t n = 0; n < N; n++) {
-    tree->computeNonEdgeForces(n, theta, neg_f + n * D, &sum_Q);
+    tree.computeNonEdgeForces(n, theta, neg_f + n * D, &sum_Q);
   }
 
   // Compute final t-SNE gradient
@@ -313,7 +316,6 @@ void TSNE::computeGradient(double* P, uint32_t* inp_row_P, uint32_t* inp_col_P, 
   }
   free(pos_f);
   free(neg_f);
-  delete tree;
 }
 
 // Compute gradient of the t-SNE cost function (exact)
@@ -412,11 +414,11 @@ double TSNE::evaluateError(double* P, double* Y, uint32_t N, uint32_t D) {
 // Evaluate t-SNE cost function (approximately)
 double TSNE::evaluateError(uint32_t* row_P, uint32_t* col_P, double* val_P, double* Y, uint32_t N, uint32_t D, double theta){
   // Get estimate of normalization term
-  SPTree* tree = new SPTree(D, Y, N);
+  SPTree tree(D, Y, N);
   double* buff = (double*) calloc(D, sizeof(double));
   double sum_Q = .0;
   for(uint32_t n = 0; n < N; n++) {
-    tree->computeNonEdgeForces(n, theta, buff, &sum_Q);
+    tree.computeNonEdgeForces(n, theta, buff, &sum_Q);
   }
 
   // Loop over all edges to compute t-SNE error
@@ -437,7 +439,6 @@ double TSNE::evaluateError(uint32_t* row_P, uint32_t* col_P, double* val_P, doub
 
   // Clean up memory
   free(buff);
-  delete tree;
   return C;
 }
 
@@ -550,10 +551,12 @@ void TSNE::computeGaussianPerplexity(double* X, uint32_t N, uint32_t D, uint32_t
   }
 
   // Build ball tree on data set
-  VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
+  VpTree<DataPoint, euclidean_distance> tree;
   vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
-  for(uint32_t n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
-  tree->create(obj_X);
+  for(uint32_t n = 0; n < N; n++) {
+    obj_X[n] = DataPoint(D, n, X + n * D);
+  }
+  tree.create(obj_X);
 
   // Loop over all points to find nearest neighbors
   printf("Building tree...\n");
@@ -566,7 +569,7 @@ void TSNE::computeGaussianPerplexity(double* X, uint32_t N, uint32_t D, uint32_t
     // Find nearest neighbors
     indices.clear();
     distances.clear();
-    tree->search(obj_X[n], K + 1, &indices, &distances);
+    tree.search(obj_X[n], K + 1, &indices, &distances);
 
     // Initialize some variables for binary search
     bool found = false;
@@ -628,7 +631,6 @@ void TSNE::computeGaussianPerplexity(double* X, uint32_t N, uint32_t D, uint32_t
   // Clean up memory
   obj_X.clear();
   free(cur_P);
-  delete tree;
 }
 
 
