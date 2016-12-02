@@ -8,7 +8,10 @@
 #include <string>
 #include <pca.h>
 
-arma::mat loadData(){
+arma::mat loadData(const TSNEArgs& params){
+	bool doPca = true;
+	bool menaCenterCols = true;
+
   std::ifstream inFile("data.tsv");
 
   if(!inFile){
@@ -30,46 +33,95 @@ arma::mat loadData(){
     while(ss >> out){
       tempVec.emplace_back(out);
     }
+    if(!inputVecVec.empty()){
+    	if(inputVecVec.front().size() != tempVec.size()){
+    		std::stringstream ss;
+    		 ss << __PRETTY_FUNCTION__ << ", error input vector is not the size as the rest of the matrix" << "\n";
+    		 ss << "Matrix size: " << inputVecVec.front().size() << "\n";
+    		 ss << "Adding size: " << tempVec.size() << "\n";
+    		 throw std::runtime_error{ss.str()};
+    	}
+    }
     inputVecVec.emplace_back(tempVec);
   }
   std::cout << std::endl;
-  std::cout << "inputVecVec.front().size(): " << inputVecVec.front().size() << std::endl;
-  arma::mat input(inputVecVec.size(), inputVecVec.front().size());
-  std::cout << input.n_rows << std::endl;
-  std::cout << input.n_cols << std::endl;
-  for(const auto  rowPos : iter::range(inputVecVec.size())){
-    for(const auto colPos : iter::range(inputVecVec[rowPos].size())){
-      input(rowPos, colPos) = inputVecVec[rowPos][colPos];
+
+  uint32_t colNum = inputVecVec.front().size();
+  uint32_t rowNum = inputVecVec.size();
+  if(menaCenterCols){
+    for(const auto & colPos : iter::range(colNum)){
+    	double sum = 0;
+    	for(const auto & rowPos : iter::range(inputVecVec.size())){
+    		sum += inputVecVec[rowPos][colPos];
+    	}
+    	double mean = sum/rowNum;
+    	for(const auto & rowPos : iter::range(inputVecVec.size())){
+    		inputVecVec[rowPos][colPos] = inputVecVec[rowPos][colPos] - mean;
+    	}
     }
   }
 
+
+	std::vector<std::vector<double>> princomp;
+  if(doPca){
+  	stats::pca pca(inputVecVec.front().size());
+  	for (const auto & row : inputVecVec) {
+  		pca.add_record(row);
+  	}
+  	pca.set_solver("standard");
+  	pca.solve();
+  	pca.set_num_retained(params.initial_dim_);
+
+
+  	for(const auto & row : inputVecVec){
+  		princomp.emplace_back(pca.to_principal_space(row));
+  	}
+  	std::ofstream outPca("temp_out_pca.tsv");
+    for(const auto  rowPos : iter::range(princomp.size())){
+      for(const auto colPos : iter::range(princomp[rowPos].size())){
+        if(colPos!= 0){
+        	outPca << "\t";
+        }
+        outPca << princomp[rowPos][colPos];
+      }
+      outPca << std::endl;
+    }
+  }else{
+  	princomp = inputVecVec;
+  }
+  arma::mat input(princomp.size(), princomp.front().size());
+
+  for(const auto  rowPos : iter::range(princomp.size())){
+    for(const auto colPos : iter::range(princomp[rowPos].size())){
+      input(rowPos, colPos) = princomp[rowPos][colPos];
+    }
+  }
   return input;
 }
 
-int main(){
-  const auto input = loadData();
-  
-  TSNEArgs params;
-  //params.max_iter_ = 400;
-  params.perplexity_ = 50;
-	
-  TSNE trunner;
-  auto output = trunner.run(input, params);
+int main() {
+	TSNEArgs params;
+	//params.max_iter_ = 400;
+	params.perplexity_ = 50;
+	const auto input = loadData(params);
 
-  std::ofstream outFile("temp_outOut.txt");
-  for(const auto  rowPos : iter::range(output.n_rows)){
-    for(const auto colPos : iter::range(output.n_cols)){
-      outFile << output(rowPos, colPos);
-      if(colPos + 1 != output.n_cols){
-	outFile<< "\t";
-      }
-    }
-    outFile <<std::endl;
-  }
+	TSNE trunner;
+	auto output = trunner.run(input, params);
+
+	std::ofstream outFile("temp_outOut.txt");
+	for (const auto rowPos : iter::range(output.n_rows)) {
+		for (const auto colPos : iter::range(output.n_cols)) {
+			outFile << output(rowPos, colPos);
+			if (colPos + 1 != output.n_cols) {
+				outFile << "\t";
+			}
+		}
+		outFile << std::endl;
+	}
 
 }
 
-
+/*
 using namespace std;
 
 int test() {
@@ -107,4 +159,4 @@ int test() {
 	pca.save("pca_results");
 
 	return 0;
-}
+}*/

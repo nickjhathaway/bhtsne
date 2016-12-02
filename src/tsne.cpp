@@ -49,6 +49,7 @@ using namespace std;
 
 // Perform t-SNE
 arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
+	/*
   arma::mat coeff;
 
   const arma::mat x1 = arma::normalise(X);
@@ -65,6 +66,8 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
 	    << std::endl;
 
   arma::mat x2 = x1 * subCoeff;
+  */
+  arma::mat x2 = X;
   arma::mat ret(x2.n_rows, params.no_dims_);
 
   run(x2.memptr(), x2.n_rows, x2.n_cols, ret.memptr(),
@@ -76,10 +79,9 @@ arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
 }
 
 // Perform t-SNE
-void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
-	       uint32_t no_dims, double perplexity, double theta, int rand_seed,
-               bool skip_random_init, uint32_t max_iter, uint32_t stop_lying_iter,
-	       uint32_t mom_switch_iter) {
+void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y, uint32_t no_dims,
+		double perplexity, double theta, int rand_seed, bool skip_random_init,
+		uint32_t max_iter, uint32_t stop_lying_iter, uint32_t mom_switch_iter) {
 
   // Set random seed
   if (skip_random_init != true) {
@@ -93,7 +95,7 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
   }
 
   // Determine whether we are using an exact algorithm
-  std::cout << "N" << N << std::endl;
+  std::cout << "N: " << N << std::endl;
   if(N - 1 < 3 * perplexity) {
     printf("Perplexity too large for the number of data points!\n");
     exit(1);
@@ -251,38 +253,38 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
     zeroMean(Y, N, no_dims);
 
     // Stop lying about the P-values after a while, and switch momentum
-    if (iter == stop_lying_iter) {
-      if (exact) {
-	for (uint32_t i = 0; i < N * N; i++) {
-	  P[i] /= 12.0;
-	}
-      } else {
-	for (uint32_t i = 0; i < row_P[N]; i++) {
-	  val_P[i] /= 12.0;
-	}
-      }
-    }
+		if (iter == stop_lying_iter) {
+			if (exact) {
+				for (uint32_t i = 0; i < N * N; i++) {
+					P[i] /= 12.0;
+				}
+			} else {
+				for (uint32_t i = 0; i < row_P[N]; i++) {
+					val_P[i] /= 12.0;
+				}
+			}
+		}
     if (iter == mom_switch_iter) {
       momentum = final_momentum;
     }
 
-    // Print out progress
-    if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
-      end = clock();
-      double C = .0;
-      if (exact) {
-	C = evaluateError(P, Y, N, no_dims);
-      } else {
-	C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta); // doing approximate computation here!
-      }
+		// Print out progress
+		if (iter > 0 && (iter % 50 == 0 || iter == max_iter - 1)) {
+			end = clock();
+			double C = .0;
+			if (exact) {
+				C = evaluateError(P, Y, N, no_dims);
+			} else {
+				C = evaluateError(row_P, col_P, val_P, Y, N, no_dims, theta); // doing approximate computation here!
+			}
 
-      if (iter == 0) {
-	printf("Iteration %d: error is %f\n", iter + 1, C);
-      } else {
-	total_time += (float) (end - start) / CLOCKS_PER_SEC;
-	printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n",
-	       iter, C, (float) (end - start) / CLOCKS_PER_SEC);
-      }
+			if (iter == 0) {
+				printf("Iteration %d: error is %f\n", iter + 1, C);
+			} else {
+				total_time += (float) (end - start) / CLOCKS_PER_SEC;
+				printf("Iteration %d: error is %f (50 iterations in %4.2f seconds)\n",
+						iter, C, (float) (end - start) / CLOCKS_PER_SEC);
+			}
       start = clock();
     }
   }
@@ -303,8 +305,9 @@ void TSNE::run(double* X, uint32_t N, uint32_t D, double* Y,
 }
 
 // Compute gradient of the t-SNE cost function (using Barnes-Hut algorithm)
-void TSNE::computeGradient(double* P, uint32_t* inp_row_P, uint32_t* inp_col_P, double* inp_val_P, double* Y, uint32_t N, uint32_t D, double* dC, double theta)
-{
+void TSNE::computeGradient(double* P, uint32_t* inp_row_P, uint32_t* inp_col_P,
+		double* inp_val_P, double* Y, uint32_t N, uint32_t D, double* dC,
+		double theta) {
 
   // Construct space-partitioning tree on current map
   SPTree tree(D, Y, N);
