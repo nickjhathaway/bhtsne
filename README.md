@@ -18,8 +18,14 @@ Download and put makefile flags in makefile-common.mk
 
 ```bash
 cd bhtsne 
-CC=gcc CXX=g++ ./configure.py
+./configure.py
 ./setup.py --compfile compfile.mk --outMakefile makefile-common.mk
 ```
 
+Install with gcc compiler
+```bash
+cd bhtsne 
+CC=gcc-5 CXX=g++-5 ./configure.py
+./setup.py --compfile compfile.mk --outMakefile makefile-common.mk
+```
 
