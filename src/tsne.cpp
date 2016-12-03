@@ -30,8 +30,6 @@
  *
  */
 
-
-
 #include <cstdint>
 #include <cmath>
 #include <cfloat>
@@ -43,7 +41,7 @@
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"
-
+#include "helpers.hpp"
 #include <cppitertools/range.hpp>
 
 using namespace std;
