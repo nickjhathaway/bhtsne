@@ -10,8 +10,8 @@
 #include <pca.h>
 
 arma::mat loadData(const TSNEArgs& params){
-	bool doPca = true;
-	bool menaCenterCols = true;
+
+
 
   std::ifstream inFile("data.tsv");
 
@@ -49,7 +49,7 @@ arma::mat loadData(const TSNEArgs& params){
 
   uint32_t colNum = inputVecVec.front().size();
   uint32_t rowNum = inputVecVec.size();
-  if(menaCenterCols){
+  if(params.menaCenterCols_){
     for(const auto & colPos : iter::range(colNum)){
     	double sum = 0;
     	for(const auto & rowPos : iter::range(inputVecVec.size())){
@@ -64,7 +64,7 @@ arma::mat loadData(const TSNEArgs& params){
 
 
 	std::vector<std::vector<double>> princomp;
-  if(doPca){
+  if(params.doPca_){
   	stats::pca pca(inputVecVec.front().size());
   	for (const auto & row : inputVecVec) {
   		pca.add_record(row);
@@ -77,6 +77,7 @@ arma::mat loadData(const TSNEArgs& params){
   	for(const auto & row : inputVecVec){
   		princomp.emplace_back(pca.to_principal_space(row));
   	}
+  	/*
   	std::ofstream outPca("temp_out_pca.tsv");
     for(const auto  rowPos : iter::range(princomp.size())){
       for(const auto colPos : iter::range(princomp[rowPos].size())){
@@ -86,7 +87,7 @@ arma::mat loadData(const TSNEArgs& params){
         outPca << princomp[rowPos][colPos];
       }
       outPca << std::endl;
-    }
+    }*/
   }else{
   	princomp = inputVecVec;
   }
@@ -109,12 +110,13 @@ int main() {
 	auto output = trunner.run(input, params);
 
 	std::vector<std::vector<double>> trueOutput(output.n_rows, std::vector<double>(output.n_cols, 0));
-	std::ofstream outFile("temp_outOut_to.txt");
+	std::ofstream outFile("temp_out.txt");
 	//armadillo is column wise so the output has to go down the columns
 	uint32_t count = 0;
-	for (const auto rowPos : iter::range(output.n_rows)) {
-		for (const auto colPos : iter::range(output.n_cols)) {
-			trueOutput[count/output.n_cols][count % output.n_cols] = output(rowPos, colPos);
+	for (const auto colPos : iter::range(output.n_cols)) {
+		for (const auto rowPos : iter::range(output.n_rows)) {
+			trueOutput[count / output.n_cols][count % output.n_cols] = output(rowPos,
+					colPos);
 			++count;
 		}
 	}
@@ -127,17 +129,6 @@ int main() {
 			}
 		}
 		outFile << std::endl;
-	}
-
-	std::ofstream outFile2("temp_outOut_oo.txt");
-	for (const auto rowPos : iter::range(output.n_rows)) {
-		for (const auto colPos : iter::range(output.n_cols)) {
-			outFile2 << output(rowPos,colPos);
-			if (colPos + 1 != output.n_cols) {
-				outFile2 << "\t";
-			}
-		}
-		outFile2 << std::endl;
 	}
 }
 

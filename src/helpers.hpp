@@ -1,4 +1,5 @@
 #include <memory>
+#include <cstdint>
 
 template <typename T>
 class MallocPtr {

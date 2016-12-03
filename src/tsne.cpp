@@ -44,11 +44,14 @@
 #include "helpers.hpp"
 #include <cppitertools/range.hpp>
 
-using namespace std;
+
 
 // Perform t-SNE
-arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
 
+arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
+	/** @todo add function to use helper smart pointer class instead of armadillo
+	 * input to avoid the vectorise and fiddling with output due to the column wise nature
+	 * of armadillo's matrix */
 	arma::mat x2 = arma::vectorise( X, 1 );
   arma::mat ret(X.n_rows, params.no_dims_);
 
@@ -455,14 +458,14 @@ void TSNE::computeGaussianPerplexity(double* X, int N, int D, unsigned int** _ro
 
     // Build ball tree on data set
     VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
-    vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
+    std::vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
     for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
     tree->create(obj_X);
 
     // Loop over all points to find nearest neighbors
     printf("Building tree...\n");
-    vector<DataPoint> indices;
-    vector<double> distances;
+    std::vector<DataPoint> indices;
+    std::vector<double> distances;
     for(int n = 0; n < N; n++) {
 
         if(n % 10000 == 0) printf(" - point %d of %d\n", n, N);

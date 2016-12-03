@@ -36,15 +36,19 @@
 
 struct TSNEArgs{
 
-  double theta_ = 0.5;        // gradient accuracy
-  double perplexity_ = 30;     // perplexity
-  uint32_t no_dims_ = 2;         // output dimensionality
-  uint32_t initial_dim_ = 50;  // reduce # of cols via PCA
+  double theta_ = 0.5;             /**<  gradient accuracy */
+  double perplexity_ = 30;         /**<  perplexity, a guess of how many points per groups */
+  uint32_t no_dims_ = 2;           /**<  output dimensionality */
+  uint32_t initial_dim_ = 50;      /**<  the number of input columns actually used, normally used in conjunction with PCA to choose first components */
   bool skip_random_init_ = false;
-  uint32_t max_iter_ = 1000;    // maximum number of iterations
-  uint32_t stop_lying_iter_=250;
-  uint32_t mom_switch_iter_=250;
-  uint32_t rand_seed_ = -1;
+  uint32_t max_iter_ = 1000;       /**< maximum number of iterations */
+	uint32_t stop_lying_iter_ = 250;
+	uint32_t mom_switch_iter_ = 250;
+	uint32_t rand_seed_ = -1;
+
+	bool menaCenterCols_ = true;    /**< whether to mean center the data first, this would be done before PCA if it's being done */
+	bool doPca_ = true;							/**< whether to perform PCA first or not on input data */
+
 
 };
 
