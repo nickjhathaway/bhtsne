@@ -6,6 +6,7 @@
 #include <istream>
 #include <iostream>
 #include <string>
+#include <armadillo>
 #include <pca.h>
 
 arma::mat loadData(const TSNEArgs& params){
@@ -101,62 +102,43 @@ arma::mat loadData(const TSNEArgs& params){
 
 int main() {
 	TSNEArgs params;
-	//params.max_iter_ = 400;
 	params.perplexity_ = 50;
 	const auto input = loadData(params);
 
 	TSNE trunner;
 	auto output = trunner.run(input, params);
 
-	std::ofstream outFile("temp_outOut.txt");
+	std::vector<std::vector<double>> trueOutput(output.n_rows, std::vector<double>(output.n_cols, 0));
+	std::ofstream outFile("temp_outOut_to.txt");
+	//armadillo is column wise so the output has to go down the columns
+	uint32_t count = 0;
 	for (const auto rowPos : iter::range(output.n_rows)) {
 		for (const auto colPos : iter::range(output.n_cols)) {
-			outFile << output(rowPos, colPos);
-			if (colPos + 1 != output.n_cols) {
+			trueOutput[count/output.n_cols][count % output.n_cols] = output(rowPos, colPos);
+			++count;
+		}
+	}
+
+	for (const auto rowPos : iter::range(trueOutput.size())) {
+		for (const auto colPos : iter::range(trueOutput[rowPos].size())) {
+			outFile << trueOutput[rowPos][colPos];
+			if (colPos + 1 != trueOutput[rowPos].size()) {
 				outFile << "\t";
 			}
 		}
 		outFile << std::endl;
 	}
 
+	std::ofstream outFile2("temp_outOut_oo.txt");
+	for (const auto rowPos : iter::range(output.n_rows)) {
+		for (const auto colPos : iter::range(output.n_cols)) {
+			outFile2 << output(rowPos,colPos);
+			if (colPos + 1 != output.n_cols) {
+				outFile2 << "\t";
+			}
+		}
+		outFile2 << std::endl;
+	}
 }
 
-/*
-using namespace std;
 
-int test() {
-
-	const int num_variables = 10;
-	const int num_records = 300;
-
-	stats::pca pca(num_variables);
-	pca.set_do_bootstrap(true, 100);
-
-	cout<<"Adding random data records ..."<<endl;
-	srand(1);
-	for (int i=0; i<num_records; ++i) {
-		vector<double> record(num_variables);
-		for (auto& value : record) {
-			value = rand()%20 - 10;
-		}
-		pca.add_record(record);
-	}
-
-	cout<<"Solving ..."<<endl;
-	pca.solve();
-
-	cout<<"Energy = "<<pca.get_energy()<<" ("<<
-      		stats::utils::get_sigma(pca.get_energy_boot())<<")"<<endl;
-
-	const auto eigenvalues = pca.get_eigenvalues();
-	cout<<"First three eigenvalues = "<<eigenvalues[0]<<", "
-									  <<eigenvalues[1]<<", "
-									  <<eigenvalues[2]<<endl;
-
-	cout<<"Orthogonal Check = "<<pca.check_eigenvectors_orthogonal()<<endl;
-	cout<<"Projection Check = "<<pca.check_projection_accurate()<<endl;
-
-	pca.save("pca_results");
-
-	return 0;
-}*/

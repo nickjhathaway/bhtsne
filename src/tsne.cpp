@@ -39,6 +39,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <memory>
 #include "vptree.h"
 #include "sptree.h"
 #include "tsne.h"
@@ -49,39 +50,22 @@ using namespace std;
 
 // Perform t-SNE
 arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
-	/*
-  arma::mat coeff;
 
-  const arma::mat x1 = arma::normalise(X);
-  std::cout << "about run to PCA..." << std::endl;
-  arma::princomp(coeff, x1);
-  std::cout << "done PCA..." << std::endl;
-  
-  std::cout << "coeff: n_rows: " << coeff.n_rows << ", ncols: " << coeff.n_cols
-	    << std::endl;
-  
-  auto n_rows = std::min(static_cast<uint32_t>(coeff.n_rows), params.initial_dim);
-  const auto subCoeff = coeff.submat(0, 0, n_rows - 1, coeff.n_cols - 1);
-  std::cout << "subCoeff: n_rows: " << subCoeff.n_rows << ", ncols: " << subCoeff.n_cols
-	    << std::endl;
+	arma::mat x2 = arma::vectorise( X, 1 );
+  arma::mat ret(X.n_rows, params.no_dims_);
 
-  arma::mat x2 = x1 * subCoeff;
-  */
-  arma::mat x2 = X;
-  arma::mat ret(x2.n_rows, params.no_dims_);
-
-  run(x2.memptr(), x2.n_rows, x2.n_cols, ret.memptr(),
+  run(x2.memptr(), X.n_rows, X.n_cols, ret.memptr(),
       params.no_dims_, params.perplexity_, params.theta_, params.rand_seed_,
       params.skip_random_init_, params.max_iter_, params.stop_lying_iter_,
       params.mom_switch_iter_);
   
+
   return ret;
 }
 
 // Perform t-SNE
 void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexity, double theta, int rand_seed,
                bool skip_random_init, int max_iter, int stop_lying_iter, int mom_switch_iter) {
-
     // Set random seed
     if (skip_random_init != true) {
       if(rand_seed >= 0) {
@@ -97,7 +81,10 @@ void TSNE::run(double* X, int N, int D, double* Y, int no_dims, double perplexit
     if(N - 1 < 3 * perplexity) { printf("Perplexity too large for the number of data points!\n"); exit(1); }
     printf("Using no_dims = %d, perplexity = %f, and theta = %f\n", no_dims, perplexity, theta);
     bool exact = (theta == .0) ? true : false;
-
+    std::cout << "First 5 " << std::endl;
+    for(uint32_t i = 0; i < 5; ++i){
+    	std::cout << X[i] << std::endl;
+    }
     // Set learning parameters
     float total_time = .0;
     clock_t start, end;
