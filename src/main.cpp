@@ -1,5 +1,3 @@
-
-#include "tsne.h"
 #include <cppitertools/range.hpp>
 #include <sstream>
 #include <ostream>
@@ -9,10 +7,9 @@
 #include <armadillo>
 #include <pca.h>
 
-arma::mat loadData(const TSNEArgs& params){
+#include "tsne.h"
 
-
-
+Mat loadData(const TSNEArgs& params){
   std::ifstream inFile("data.tsv");
 
   if(!inFile){
@@ -91,13 +88,7 @@ arma::mat loadData(const TSNEArgs& params){
   }else{
   	princomp = inputVecVec;
   }
-  arma::mat input(princomp.size(), princomp.front().size());
-
-  for(const auto  rowPos : iter::range(princomp.size())){
-    for(const auto colPos : iter::range(princomp[rowPos].size())){
-      input(rowPos, colPos) = princomp[rowPos][colPos];
-    }
-  }
+  Mat input(princomp);
   return input;
 }
 
@@ -113,6 +104,7 @@ int main() {
 	std::ofstream outFile("temp_out.txt");
 	//armadillo is column wise so the output has to go down the columns
 	uint32_t count = 0;
+	/*
 	for (const auto colPos : iter::range(output.n_cols)) {
 		for (const auto rowPos : iter::range(output.n_rows)) {
 			trueOutput[count / output.n_cols][count % output.n_cols] = output(rowPos,
@@ -130,6 +122,7 @@ int main() {
 		}
 		outFile << std::endl;
 	}
+	*/
 }
 
 

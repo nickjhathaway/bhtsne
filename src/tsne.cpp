@@ -45,17 +45,16 @@
 #include <cppitertools/range.hpp>
 
 
-
 // Perform t-SNE
 
-arma::mat TSNE::run(const arma::mat& X, const TSNEArgs& params) {
+Mat TSNE::run(const Mat& X, const TSNEArgs& params) {
 	/** @todo add function to use helper smart pointer class instead of armadillo
 	 * input to avoid the vectorise and fiddling with output due to the column wise nature
 	 * of armadillo's matrix */
-	arma::mat x2 = arma::vectorise( X, 1 );
-  arma::mat ret(X.n_rows, params.no_dims_);
 
-  run(x2.memptr(), X.n_rows, X.n_cols, ret.memptr(),
+  Mat ret(X.n_rows, params.no_dims_);
+
+  run(X.ptr_, X.n_rows, X.n_cols, ret.ptr_,
       params.no_dims_, params.perplexity_, params.theta_, params.rand_seed_,
       params.skip_random_init_, params.max_iter_, params.stop_lying_iter_,
       params.mom_switch_iter_);
