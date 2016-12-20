@@ -95,15 +95,25 @@ Mat loadData(const TSNEArgs& params){
 int main() {
 	TSNEArgs params;
 	params.perplexity_ = 50;
+	params.no_dims_ = 3;
 	const auto input = loadData(params);
 
 	TSNE trunner;
 	auto output = trunner.run(input, params);
 
-	std::vector<std::vector<double>> trueOutput(output.n_rows, std::vector<double>(output.n_cols, 0));
+
 	std::ofstream outFile("temp_out.txt");
-	//armadillo is column wise so the output has to go down the columns
-	uint32_t count = 0;
+	for(uint32_t i = 0; i < output.num_elements_; ++i){
+		uint32_t colPos = i % output.n_cols;
+		//uint32_t rowPos = i / output.n_cols;
+		if(0 != colPos){
+			outFile << "\t";
+		}
+		outFile << output.data_.get()[i];
+		if(colPos + 1 == output.n_cols){
+			outFile << "\n";
+		}
+	}
 	/*
 	for (const auto colPos : iter::range(output.n_cols)) {
 		for (const auto rowPos : iter::range(output.n_rows)) {

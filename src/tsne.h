@@ -37,34 +37,28 @@
 #include "helpers.hpp"
 
 struct Mat {
-  const size_t n_rows;
-  const size_t n_cols;
-  const size_t num_elements_;
-  std::shared_ptr<double> data_;
-  double* ptr_;
-  
-  Mat(const size_t n_rows, const size_t n_cols)
-  : n_rows(n_rows)
-  , n_cols(n_cols)
-  , num_elements_(n_rows * n_cols)
-  {
-    data_ = MallocPtr<double>::NumElements(num_elements_, true);
-    ptr_ = data_.get();
-  }
+	const size_t n_rows;
+	const size_t n_cols;
+	const size_t num_elements_;
+	std::shared_ptr<double> data_;
+	double* ptr_;
 
-  Mat(const std::vector<std::vector<double>>& m)
-  : n_rows(m.size())
-  , n_cols(m.front().size())
-  , num_elements_(n_rows * n_cols)
-  {
-    data_ = MallocPtr<double>::NumElements(num_elements_, false);
-    ptr_ = data_.get();
+	Mat(const size_t n_rows, const size_t n_cols) :
+			n_rows(n_rows), n_cols(n_cols), num_elements_(n_rows * n_cols) {
+		data_ = MallocPtr<double>::NumElements(num_elements_, true);
+		ptr_ = data_.get();
+	}
 
-    for(size_t i = 0; i < n_rows; ++i){
-      const auto& p = m[i];
-      std::copy(p.begin(), p.end(), &ptr_[i * n_cols]);
-    }
-  }
+	Mat(const std::vector<std::vector<double>>& m) :
+			n_rows(m.size()), n_cols(m.front().size()), num_elements_(n_rows * n_cols) {
+		data_ = MallocPtr<double>::NumElements(num_elements_, false);
+		ptr_ = data_.get();
+
+		for (size_t i = 0; i < n_rows; ++i) {
+			const auto& p = m[i];
+			std::copy(p.begin(), p.end(), &ptr_[i * n_cols]);
+		}
+	}
 };
 
 struct TSNEArgs{
