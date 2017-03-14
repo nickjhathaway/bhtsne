@@ -82,8 +82,9 @@ public:
 	DataPoint& operator=(const DataPoint& other) {
 		// assignment should free old object
 		if (this != &other) {
-			if (x_ != NULL)
+			if (x_ != NULL){
 				free(x_);
+			}
 			D_ = other.dimensionality();
 			ind_ = other.index();
 			x_ = (double*) malloc(D_ * sizeof(double));
@@ -110,7 +111,7 @@ inline double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
 	double* x1 = t1.x_;
 	double* x2 = t2.x_;
 	double diff;
-	for (int d = 0; d < t1.D_; d++) {
+	for (int d = 0; d < t1.D_; ++d) {
 		diff = (x1[d] - x2[d]);
 		dd += diff * diff;
 	}

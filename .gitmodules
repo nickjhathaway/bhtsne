@@ -1,0 +1,3 @@
+[submodule "cppSetupTools"]
+	path = cppSetupTools
+	url = git@github.com:nickjhathaway/cppSetupTools.git
