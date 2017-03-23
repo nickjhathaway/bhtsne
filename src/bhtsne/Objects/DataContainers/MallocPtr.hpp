@@ -1,7 +1,17 @@
 #pragma once
+/*
+ * MallocPtr.hpp
+ *
+ *  Created on: Mar 22, 2017
+ *      Author: nick
+ */
 
-#include <memory>
-#include <cstdint>
+
+
+#include "bhtsne/common.h"
+
+
+namespace bhtsne {
 
 template <typename T>
 class MallocPtr {
@@ -19,11 +29,14 @@ public:
       std::cerr << "could not allocate " << numBytes << " bytes of data";
       throw std::bad_alloc();
     }
-    
+
     if(zero) {
       memset(rawPtr, 0, numBytes);
     }
-    
+
     return std::shared_ptr<T>(rawPtr, [](T* ptr){ free(ptr); });
   }
 };
+
+
+}  // namespace bhtsne

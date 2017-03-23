@@ -34,49 +34,30 @@
 #define ARMA_64BIT_WORD
 #include <armadillo>
 
-#include "helpers.hpp"
+#include "bhtsne/Objects/DataContainers/Mat.hpp"
 
-struct Mat {
-	const size_t n_rows;
-	const size_t n_cols;
-	const size_t num_elements_;
-	std::shared_ptr<double> data_;
-	double* ptr_;
+namespace bhtsne {
 
-	Mat(const size_t n_rows, const size_t n_cols) :
-			n_rows(n_rows), n_cols(n_cols), num_elements_(n_rows * n_cols) {
-		data_ = MallocPtr<double>::NumElements(num_elements_, true);
-		ptr_ = data_.get();
-	}
 
-	Mat(const std::vector<std::vector<double>>& m) :
-			n_rows(m.size()), n_cols(m.front().size()), num_elements_(n_rows * n_cols) {
-		data_ = MallocPtr<double>::NumElements(num_elements_, false);
-		ptr_ = data_.get();
 
-		for (size_t i = 0; i < n_rows; ++i) {
-			const auto& p = m[i];
-			std::copy(p.begin(), p.end(), &ptr_[i * n_cols]);
-		}
-	}
-};
 
-struct TSNEArgs{
 
-  double theta_ = 0.5;             /**<  gradient accuracy */
-  double perplexity_ = 30;         /**<  perplexity, a guess of how many points per groups */
-  uint32_t no_dims_ = 2;           /**<  output dimensionality */
-  uint32_t initial_dim_ = 50;      /**<  the number of input columns actually used, normally used in conjunction with PCA to choose first components */
-  bool skip_random_init_ = false;
-  uint32_t max_iter_ = 1000;       /**< maximum number of iterations */
+struct TSNEArgs {
+
+	double theta_ = 0.5; /**<  gradient accuracy */
+	double perplexity_ = 30; /**<  perplexity, a guess of how many points per groups */
+	uint32_t no_dims_ = 2; /**<  output dimensionality */
+	uint32_t initial_dim_ = 50; /**<  the number of input columns actually used, normally used in conjunction with PCA to choose first components */
+	bool skip_random_init_ = false;
+	uint32_t max_iter_ = 1000; /**< maximum number of iterations */
 	uint32_t stop_lying_iter_ = 250;
 	uint32_t mom_switch_iter_ = 250;
-	uint32_t rand_seed_ = -1;
+	uint32_t rand_seed_ = std::numeric_limits<uint32_t>::max();
 
-	bool menaCenterCols_ = true;    /**< whether to mean center the data first, this would be done before PCA if it's being done */
-	bool doPca_ = true;							/**< whether to perform PCA first or not on input data */
+	bool meanCenterCols_ = true; /**< whether to mean center the data first, this would be done before PCA if it's being done */
+	bool doPca_ = true; /**< whether to perform PCA first or not on input data */
 
-
+	bool verbose_ = false;
 };
 
 static inline double sign(double x) {
@@ -112,3 +93,7 @@ private:
 	void computeSquaredEuclideanDistance(double* X, int N, int D, double* DD);
 	double randn();
 };
+
+}  // namespace bhtsne
+
+

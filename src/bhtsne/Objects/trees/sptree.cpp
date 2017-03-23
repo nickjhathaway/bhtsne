@@ -30,12 +30,11 @@
  *
  */
 
-#include <cmath>
-#include <cfloat>
-#include <cstdlib>
-#include <cstdio>
-#include <cmath>
+
 #include "sptree.h"
+
+namespace bhtsne {
+
 
 // Constructs cell
 Cell::Cell(unsigned int inp_dimension) {
@@ -479,4 +478,10 @@ void SPTree::print() {
 		}
 	}
 }
+
+
+}  // namespace bhtsne
+
+
+
 

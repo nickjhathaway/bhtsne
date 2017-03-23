@@ -30,20 +30,11 @@
  *
  */
 
-#include <cstdint>
-#include <cmath>
-#include <cfloat>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <ctime>
-#include <memory>
-#include "vptree.h"
-#include "sptree.h"
 #include "tsne.h"
-#include "helpers.hpp"
-#include <cppitertools/range.hpp>
+#include "bhtsne/objects/trees.h"
 
+#include <cppitertools/range.hpp>
+namespace bhtsne {
 // Perform t-SNE
 
 Mat TSNE::run(const Mat& X, const TSNEArgs& params) {
@@ -951,3 +942,6 @@ int main() {
 	delete (tsne);
 }
 */
+
+} // namespace bhtsne
+

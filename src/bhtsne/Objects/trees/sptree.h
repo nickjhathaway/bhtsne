@@ -1,3 +1,4 @@
+#pragma once
 /*
  *
  * Copyright (c) 2014, Laurens van der Maaten (Delft University of Technology)
@@ -30,11 +31,10 @@
  *
  */
 
-
-#ifndef SPTREE_H
-#define SPTREE_H
+#include "bhtsne/common.h"
 
 
+namespace bhtsne {
 
 
 class Cell {
@@ -57,8 +57,7 @@ public:
 };
 
 
-class SPTree
-{
+class SPTree {
     
     // Fixed constants
     static const unsigned int QT_NODE_CAPACITY = 1;
@@ -112,4 +111,6 @@ private:
     bool isChild(unsigned int test_index, unsigned int start, unsigned int end);
 };
 
-#endif
+
+}  // namespace bhtsne
+

@@ -33,14 +33,13 @@
 
 /* This code was adopted with minor modifications from Steve Hanov's great tutorial at http://stevehanov.ca/blog/index.php?id=130 */
 
-#include <cstdlib>
-#include <algorithm>
-#include <vector>
-#include <cstdio>
-#include <queue>
-#include <limits>
-#include <cmath>
 
+
+#include "bhtsne/Objects/DataContainers/DataPoint.hpp"
+
+namespace bhtsne {
+
+/*
 class DataPoint {
 	uint32_t ind_;
 
@@ -116,7 +115,7 @@ inline double euclidean_distance(const DataPoint &t1, const DataPoint &t2) {
 		dd += diff * diff;
 	}
 	return sqrt(dd);
-}
+}*/
 
 template<typename T, double (*distance)(const T&, const T&)>
 class VpTree {
@@ -292,4 +291,7 @@ private:
 		}
 	}
 };
+
+}  // namespace bhtsne
+
 
