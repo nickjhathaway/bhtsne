@@ -31,7 +31,7 @@
  */
 
 #include "tsne.h"
-#include "bhtsne/objects/trees.h"
+#include "bhtsne/Objects/trees.h"
 
 #include <cppitertools/range.hpp>
 namespace bhtsne {
