@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
 	bib::bfs::path outputFile = "out.tab.txt";
 	bool overWrite = false;
 	bool noPca = false;
-	bib::progutils::programSetUp setUp(argc, argv);
+	bib::progutils::ProgramSetUp setUp(argc, argv);
 	setUp.setOption(params.perplexity_, "--perplexity", "TSNE perplexity");
 	setUp.setOption(params.no_dims_, "--noDims", "TSNE output dimensions");
 	setUp.setOption(params.initial_dim_, "--initialDims", "Initial input dimensions");
