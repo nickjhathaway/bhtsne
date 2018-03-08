@@ -73,67 +73,73 @@ std::vector<std::vector<double>> runPca(
 	return ret;
 }
 
-std::vector<std::vector<double>> readInData(const bib::bfs::path & inputFnp, bool verbose){
-	if(!bib::bfs::exists(inputFnp)){
+std::vector<std::vector<double>> readInData(const bib::bfs::path & inputFnp,
+		bool verbose) {
+	if (!bib::bfs::exists(inputFnp)) {
 		std::stringstream ss;
-		ss << __PRETTY_FUNCTION__ << ", error, input file: " << inputFnp << " doesn't exist " << "\n";
-		throw std::runtime_error{ss.str()};
+		ss << __PRETTY_FUNCTION__ << ", error, input file: " << inputFnp
+				<< " doesn't exist " << "\n";
+		throw std::runtime_error { ss.str() };
 	}
-  std::string line = "";
-  uint32_t lineCount = 0;
-  std::vector<std::vector<double>> ret;
-  std::ifstream inFile(inputFnp.string());
-  if(!inFile){
-  	std::stringstream ss;
-		ss << __PRETTY_FUNCTION__ << ", error, in opening file: " << inputFnp << "\n";
-		throw std::runtime_error{ss.str()};
-  }
-  while(bib::files::crossPlatGetline(inFile, line)){
-    ++lineCount;
-    if(verbose){
-      std::cout << "\r"<< lineCount;
-      std::cout.flush();
-    }
-    std::vector<double> tempVec;
-    std::stringstream ss;
-    ss << line;
-    double out = 0;
-    while(ss >> out){
-      tempVec.emplace_back(out);
-    }
-    if(!ret.empty()){
-    	if(ret.front().size() != tempVec.size()){
-    		std::stringstream ss;
-    		 ss << __PRETTY_FUNCTION__ << ", error input vector is not the size as the rest of the matrix" << "\n";
-    		 ss << "Matrix size: " << ret.front().size() << "\n";
-    		 ss << "Adding size: " << tempVec.size() << "\n";
-    		 throw std::runtime_error{ss.str()};
-    	}
-    }
-    ret.emplace_back(tempVec);
-  }
-  if(verbose){
-  	std::cout << std::endl;
-  }
-  return ret;
+	std::string line = "";
+	uint32_t lineCount = 0;
+	std::vector<std::vector<double>> ret;
+	std::ifstream inFile(inputFnp.string());
+	if (!inFile) {
+		std::stringstream ss;
+		ss << __PRETTY_FUNCTION__ << ", error, in opening file: " << inputFnp
+				<< "\n";
+		throw std::runtime_error { ss.str() };
+	}
+	while (bib::files::crossPlatGetline(inFile, line)) {
+		++lineCount;
+		if (verbose) {
+			std::cout << "\r" << lineCount;
+			std::cout.flush();
+		}
+		std::vector<double> tempVec;
+		std::stringstream ss;
+		ss << line;
+		double out = 0;
+		while (ss >> out) {
+			tempVec.emplace_back(out);
+		}
+		if (!ret.empty()) {
+			if (ret.front().size() != tempVec.size()) {
+				std::stringstream ss;
+				ss << __PRETTY_FUNCTION__
+						<< ", error input vector is not the size as the rest of the matrix"
+						<< "\n";
+				ss << "Matrix size: " << ret.front().size() << "\n";
+				ss << "Adding size: " << tempVec.size() << "\n";
+				throw std::runtime_error { ss.str() };
+			}
+		}
+		ret.emplace_back(tempVec);
+	}
+	if (verbose) {
+		std::cout << std::endl;
+	}
+	return ret;
 }
 
-Mat preProcessData(std::vector<std::vector<double>> & inputVecVec, const TSNEArgs& params){
-  std::ifstream inFile("data.tsv");
+Mat preProcessData(std::vector<std::vector<double>> & inputVecVec,
+		const TSNEArgs& params) {
+	std::ifstream inFile("data.tsv");
 
-  if(params.meanCenterCols_){
-  	meanCenterColsMatrix(inputVecVec);
-  }
+	if (params.meanCenterCols_) {
+		meanCenterColsMatrix(inputVecVec);
+	}
 	std::vector<std::vector<double>> princomp;
-  if(params.doPca_){
-  	pcaArgs pArgs;
-  	pArgs.numRetained_ = params.initial_dim_;
-  	princomp = runPca(inputVecVec, pArgs);
-  }else{
-  	princomp = inputVecVec;
-  }
-  Mat input(princomp);
-  return input;
+	if (params.doPca_) {
+		pcaArgs pArgs;
+		pArgs.numRetained_ = params.initial_dim_;
+		princomp = runPca(inputVecVec, pArgs);
+	} else {
+		princomp = inputVecVec;
+	}
+	Mat input(princomp);
+	return input;
 }
 
 Mat loadData(const bib::bfs::path & inputFnp, const TSNEArgs& params){
